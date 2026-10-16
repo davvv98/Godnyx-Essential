@@ -130,6 +130,19 @@ cp -a "$HOST_SO" "$LIBS/librodin_essential_host.so"
 cp -a "$ENGINE_PREBUILT/libflutter_engine.so" "$LIBS/libflutter_engine.so"
 cp -a "$AOT/arm64-v8a/app.so" "$LIBS/libapp.so"
 
+# The embedder target may contain hundreds of MB of debug symbols. Keep its
+# dynamic exports but remove debug/static symbols before adding it to the APK.
+LLVM_STRIP="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
+[ -x "$LLVM_STRIP" ] || { echo "Missing LLVM strip: $LLVM_STRIP" >&2; exit 1; }
+ENGINE_SIZE_BEFORE="$(stat -c %s "$LIBS/libflutter_engine.so")"
+"$LLVM_STRIP" --strip-unneeded "$LIBS/libflutter_engine.so"
+ENGINE_SIZE_AFTER="$(stat -c %s "$LIBS/libflutter_engine.so")"
+echo "FLUTTER_ENGINE_SIZE before=$ENGINE_SIZE_BEFORE after=$ENGINE_SIZE_AFTER"
+if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+    printf 'Flutter engine: %s -> %s bytes after stripping.\n' "$ENGINE_SIZE_BEFORE" "$ENGINE_SIZE_AFTER" >> "$GITHUB_STEP_SUMMARY"
+fi
+
+
 "$AAPT2" compile --dir "$ROOT/android/package/res" -o "$STAGE/compiled_res.zip"
 
 "$AAPT2" link \

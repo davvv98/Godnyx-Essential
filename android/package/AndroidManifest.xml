@@ -25,7 +25,7 @@
         android:debuggable="false"
         android:extractNativeLibs="false"
         android:hasCode="true"
-        android:label="Rodin Essential"
+        android:label="Onyx Essential"
         android:supportsRtl="true">
 
         <activity

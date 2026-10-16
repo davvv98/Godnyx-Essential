@@ -362,10 +362,10 @@ index 0095321..62922c4 100644
  Rodin Essential is a native hardware-control application for Xiaomi Rodin
 diff --git a/README_ONYX.md b/README_ONYX.md
 new file mode 100644
-index 0000000..c635ec7
+index 0000000..76eb01e
 --- /dev/null
 +++ b/README_ONYX.md
-@@ -0,0 +1,79 @@
+@@ -0,0 +1,93 @@
 +# Godnyx Essential — POCO F7 / Onyx — adaptación inicial
 +
 +Basado en https://github.com/davvv98/Godnyx-Essential.
@@ -445,6 +445,20 @@ index 0000000..c635ec7
 +`BASE_COMMIT.txt`. `diagnostico_onyx_pendientes.sh` recopila información de touch
 +y carga en modo de solo lectura; no ejecuta lshal, que se quedó bloqueado en
 +la captura del teléfono.
++
++## Correcciones tras la primera prueba real
++
++Se corrige el nombre visible de la aplicación a Onyx Essential y se aplica
++llvm-strip --strip-unneeded al motor Flutter antes de empaquetarlo. El job
++reporta los tamaños antes/después. El tamaño final debe comprobarse en el APK
++resultante: no se ha generado un APK nuevo aquí.
++
++GPU/CPU/DisplayFeature siguen pendientes de diagnóstico del dispositivo. No
++se atribuye el fallo a permisos, SELinux o HAL sin ver el error real.
++`diagnostico_onyx_instalado.sh` recopila el snapshot, logs, contextos y nodos
++sin modificar controles del dispositivo. Primero intentar GPU, CPU y color en
++la app, después ejecutar el diagnóstico como root. Carga y touch permanecen
++pendientes; este parche no los convierte en funciones implementadas.
 diff --git a/android/kernelsu-next/customize.sh b/android/kernelsu-next/customize.sh
 index 3ab1aaa..9a0d5a7 100755
 --- a/android/kernelsu-next/customize.sh
@@ -538,8 +552,21 @@ index 8f479ee..ad8c2ac 100755
  RODIN_WATCHDOG_LOCK="$RODIN_ROOT/watchdog.lock"
  RODIN_WATCHDOG_PID="$(cat "$RODIN_ROOT/watchdog.pid" 2>/dev/null)"
  RODIN_PACKAGE=io.github.neeschal.rodinessential
+diff --git a/android/package/AndroidManifest.xml b/android/package/AndroidManifest.xml
+index ab80890..add90ed 100644
+--- a/android/package/AndroidManifest.xml
++++ b/android/package/AndroidManifest.xml
+@@ -25,7 +25,7 @@
+         android:debuggable="false"
+         android:extractNativeLibs="false"
+         android:hasCode="true"
+-        android:label="Rodin Essential"
++        android:label="Onyx Essential"
+         android:supportsRtl="true">
+ 
+         <activity
 diff --git a/build-and-install.sh b/build-and-install.sh
-index 5945233..5edfc11 100755
+index 5945233..a1b7225 100755
 --- a/build-and-install.sh
 +++ b/build-and-install.sh
 @@ -48,9 +48,9 @@ echo "===== 2. BUILD FLUTTER AOT RELEASE BUNDLE ====="
@@ -555,7 +582,27 @@ index 5945233..5edfc11 100755
  
  NDK="$SDK/ndk/$NDK_VER"
  LINKER="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android31-clang"
-@@ -283,7 +283,7 @@ if [ -f "$DAEMON_BIN" ]; then
+@@ -130,6 +130,19 @@ cp -a "$HOST_SO" "$LIBS/librodin_essential_host.so"
+ cp -a "$ENGINE_PREBUILT/libflutter_engine.so" "$LIBS/libflutter_engine.so"
+ cp -a "$AOT/arm64-v8a/app.so" "$LIBS/libapp.so"
+ 
++# The embedder target may contain hundreds of MB of debug symbols. Keep its
++# dynamic exports but remove debug/static symbols before adding it to the APK.
++LLVM_STRIP="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
++[ -x "$LLVM_STRIP" ] || { echo "Missing LLVM strip: $LLVM_STRIP" >&2; exit 1; }
++ENGINE_SIZE_BEFORE="$(stat -c %s "$LIBS/libflutter_engine.so")"
++"$LLVM_STRIP" --strip-unneeded "$LIBS/libflutter_engine.so"
++ENGINE_SIZE_AFTER="$(stat -c %s "$LIBS/libflutter_engine.so")"
++echo "FLUTTER_ENGINE_SIZE before=$ENGINE_SIZE_BEFORE after=$ENGINE_SIZE_AFTER"
++if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
++    printf 'Flutter engine: %s -> %s bytes after stripping.\n' "$ENGINE_SIZE_BEFORE" "$ENGINE_SIZE_AFTER" >> "$GITHUB_STEP_SUMMARY"
++fi
++
++
+ "$AAPT2" compile --dir "$ROOT/android/package/res" -o "$STAGE/compiled_res.zip"
+ 
+ "$AAPT2" link \
+@@ -283,7 +296,7 @@ if [ -f "$DAEMON_BIN" ]; then
      adb push "$CTL_BIN" /data/local/tmp/rodin_ctl >/dev/null
      adb push "$ROOT/android/kernelsu-next/service.sh" /data/local/tmp/rodin-service.sh >/dev/null
      adb push "$ROOT/android/kernelsu-next/module.prop" /data/local/tmp/rodin-module.prop >/dev/null
@@ -564,6 +611,61 @@ index 5945233..5edfc11 100755
      sleep 1
  fi
  
+diff --git a/diagnostico_onyx_instalado.sh b/diagnostico_onyx_instalado.sh
+new file mode 100755
+index 0000000..b1ec540
+--- /dev/null
++++ b/diagnostico_onyx_instalado.sh
+@@ -0,0 +1,49 @@
++#!/system/bin/sh
++# Solo lectura. Primero intentar GPU, CPU y color en la aplicación.
++echo '=== ROOT Y SELINUX ==='
++id
++getenforce
++echo '=== MODULO Y PROCESOS ==='
++cat /data/adb/modules/nees_rodin_essential_backend/module.prop 2>/dev/null
++pidof rodin_daemon
++ps -AZ 2>/dev/null | grep -E 'rodin_daemon|rodinessential'
++echo '=== SNAPSHOT DAEMON ==='
++CTL=/data/adb/modules/nees_rodin_essential_backend/bin/rodin_ctl
++if [ -x "$CTL" ]; then
++    if command -v timeout >/dev/null 2>&1; then timeout 12 "$CTL" GET snapshot; else echo 'Sin timeout: se omite IPC para evitar bloqueo'; fi
++fi
++echo
++echo '=== LOG DAEMON ==='
++tail -n 90 /data/adb/onyx-essential/backend.log 2>/dev/null
++echo '=== LOG APP ==='
++logcat -d -v brief -s RodinEssential '*:S' 2>/dev/null | tail -n 100
++echo '=== DENEGACIONES RECIENTES ==='
++logcat -d -b all -v brief 2>/dev/null | grep -i 'avc: denied' | grep -iE 'rodin|kgsl|cpufreq|displayfeature|touchfeature' | tail -n 35
++echo '=== GPU ==='
++for n in cur_freq min_freq max_freq governor available_frequencies available_governors; do
++    f="/sys/class/kgsl/kgsl-3d0/devfreq/$n"
++    echo "--- $f"
++    ls -lZ "$f" 2>/dev/null
++    cat "$f" 2>/dev/null
++done
++echo '=== CPU ==='
++for p in 0 2 5 7; do
++    d="/sys/devices/system/cpu/cpufreq/policy$p"
++    for n in scaling_min_freq scaling_max_freq scaling_governor; do
++        echo "--- $d/$n"
++        ls -lZ "$d/$n" 2>/dev/null
++        cat "$d/$n" 2>/dev/null
++    done
++done
++echo '=== XIAOMI HAL ==='
++service list | grep -iE 'xiaomi.*(touch|display)'
++echo '=== TOUCH ==='
++ls -lZ /sys/class/touch/ /sys/class/touch/touch_dev/ /dev/xiaomi-touch* 2>/dev/null
++cat /proc/tp_fw_version 2>/dev/null
++echo '=== CARGA ==='
++for n in constant_charge_current constant_charge_current_max charge_control_limit charge_control_limit_max; do
++    f="/sys/class/power_supply/battery/$n"
++    echo "--- $f"
++    ls -lZ "$f" 2>/dev/null
++    cat "$f" 2>/dev/null
++done
 diff --git a/diagnostico_onyx_pendientes.sh b/diagnostico_onyx_pendientes.sh
 new file mode 100755
 index 0000000..1791eee
@@ -3364,7 +3466,7 @@ index 72938d6..3228426 100644
    };
  
 diff --git a/ui/flutter/lib/main.dart b/ui/flutter/lib/main.dart
-index 84e3707..e471d8c 100644
+index 84e3707..09142b0 100644
 --- a/ui/flutter/lib/main.dart
 +++ b/ui/flutter/lib/main.dart
 @@ -10,6 +10,7 @@ import 'package:flutter/gestures.dart' show Drag;
@@ -3375,6 +3477,15 @@ index 84e3707..e471d8c 100644
  import 'aurora_game_engine.dart';
  import 'release_identity.dart';
  import 'page_motion.dart';
+@@ -80,7 +81,7 @@ extension RodinScreenName on RodinScreen {
+   String get title {
+     switch (this) {
+       case RodinScreen.home:
+-        return 'Rodin Essential';
++        return 'Onyx Essential';
+       case RodinScreen.hubs:
+         return 'Control Hubs';
+       case RodinScreen.support:
 @@ -104,7 +105,7 @@ extension RodinScreenName on RodinScreen {
        case RodinScreen.zramSwap:
          return 'ZRAM & Swap Manager';
@@ -3384,6 +3495,15 @@ index 84e3707..e471d8c 100644
        case RodinScreen.systemColors:
          return 'System Colors';
        case RodinScreen.perAppControls:
+@@ -202,7 +203,7 @@ class RodinEssentialApp extends StatelessWidget {
+       valueListenable: RodinThemeController.mode,
+       builder: (BuildContext context, ThemeMode themeMode, Widget? child) {
+         return MaterialApp(
+-          title: 'Rodin Essential',
++          title: 'Onyx Essential',
+           debugShowCheckedModeBanner: false,
+           scrollBehavior: const RodinScrollBehavior(),
+           themeMode: themeMode,
 @@ -961,9 +962,8 @@ class _RodinShellState extends State<RodinShell>
                                  begin: Alignment.topCenter,
                                  end: Alignment.bottomCenter,
@@ -3396,6 +3516,19 @@ index 84e3707..e471d8c 100644
                                    Theme.of(context).colorScheme.surface
                                        .withValues(alpha: isDark ? 0.74 : 0.86),
                                    Theme.of(context).colorScheme.surface,
+@@ -1440,9 +1440,9 @@ class _ServiceSettingsCardState extends State<_ServiceSettingsCard> {
+               ? (_reset
+                     ? 'All device controls reset.'
+                     : RodinBackend.instance.serviceEnabled
+-                    ? 'Rodin Essential enabled.'
+-                    : 'Rodin Essential disabled. Your preferences are saved.')
+-              : 'Some settings could not be restored. Rodin Essential control remains paused. Retry or check backend diagnostics.';
++                    ? 'Onyx Essential enabled.'
++                    : 'Onyx Essential disabled. Your preferences are saved.')
++              : 'Some settings could not be restored. Onyx Essential control remains paused. Retry or check backend diagnostics.';
+         });
+       }
+     });
 @@ -1501,134 +1501,135 @@ class _ServiceSettingsCardState extends State<_ServiceSettingsCard> {
      return StreamBuilder<RodinBackendSnapshot>(
        stream: backend.snapshots,
@@ -3492,7 +3625,7 @@ index 84e3707..e471d8c 100644
 +                          const SizedBox(width: 12),
 +                          const Expanded(
 +                            child: Text(
-+                              'Enable Rodin Essential',
++                              'Enable Onyx Essential',
                                style: TextStyle(
 -                                fontSize: 14,
 +                                fontSize: 15,
@@ -3649,6 +3782,51 @@ index 84e3707..e471d8c 100644
      );
    }
  }
+@@ -1742,7 +1743,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
+         _choosingPhoto = false;
+         _photoMessage =
+             'Photo access was not granted. '
+-            'Rodin Essential keeps working '
++            'Onyx Essential keeps working '
+             'normally without it.';
+       });
+ 
+@@ -1900,7 +1901,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: <Widget>[
+                         const Text(
+-                          'Rodin Essential Custom Surface',
++                          'Onyx Essential Custom Surface',
+                           style: TextStyle(
+                             fontSize: 15,
+                             fontWeight: FontWeight.w800,
+@@ -2256,7 +2257,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
+               ),
+               const SizedBox(height: 4),
+               Text(
+-                'Use Android automatically or force Rodin Essential to Light or pure AMOLED Black.',
++                'Use Android automatically or force Onyx Essential to Light or pure AMOLED Black.',
+                 style: TextStyle(
+                   fontSize: 11.5,
+                   color: colors.onSurfaceVariant,
+@@ -2679,7 +2680,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
+                 const SizedBox(width: 10),
+                 Expanded(
+                   child: Text(
+-                    'The selected image is copied into Rodin Essential private storage so it remains usable after photo permission changes.',
++                    'The selected image is copied into Onyx Essential private storage so it remains usable after photo permission changes.',
+                     style: TextStyle(
+                       fontSize: 11.5,
+                       height: 1.32,
+@@ -3062,7 +3063,7 @@ class HomeScreen extends StatelessWidget {
+     return RodinScrollPage(
+       children: <Widget>[
+         const RodinHeader(
+-          title: 'Rodin Essential',
++          title: 'Onyx Essential',
+           subtitle: 'Precision you can feel.',
+           large: false,
+         ),
 @@ -3122,8 +3123,8 @@ class _HomePulseHero extends StatelessWidget {
          };
          final String profileDescription = switch (activePerf) {
@@ -3686,7 +3864,7 @@ index 84e3707..e471d8c 100644
            const SizedBox(height: 10),
            Text(
 -            'Rodin Essential provides direct kernel hardware tuning, MediaTek Mali GPU frequency locks, independent CPU frequency and topology control, and AIDL display calibrations via native ROM system interfaces. GPU modes never change CPU settings. Gaming Dynamic and Extreme Beast intentionally override only the vendor GPU cooling cap; sustained high clocks can cause severe heat, battery drain, instability, or hardware damage.',
-+            'Rodin Essential provides direct kernel hardware tuning, Qualcomm Adreno GPU frequency locks, independent CPU frequency and topology control, and AIDL display calibrations via native ROM system interfaces. GPU modes never change CPU settings. GPU profiles request KGSL frequency bounds while kernel thermal limits remain active.',
++            'Onyx Essential provides direct kernel hardware tuning, Qualcomm Adreno GPU frequency locks, independent CPU frequency and topology control, and AIDL display calibrations via native ROM system interfaces. GPU modes never change CPU settings. GPU profiles request KGSL frequency bounds while kernel thermal limits remain active.',
              style: TextStyle(
                fontSize: 11.2,
                height: 1.45,
@@ -3730,6 +3908,15 @@ index 84e3707..e471d8c 100644
                        wrapSubtitle: true,
                        icon: Icons.apps_rounded,
                        accent: const Color(0xFFB087FF),
+@@ -5057,7 +5056,7 @@ class SupportScreen extends StatelessWidget {
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: <Widget>[
+                         const Text(
+-                          'Rodin Essential',
++                          'Onyx Essential',
+                           style: TextStyle(
+                             fontSize: 20,
+                             fontWeight: FontWeight.w900,
 @@ -5169,7 +5168,7 @@ class SupportScreen extends StatelessWidget {
                      const SizedBox(width: 8),
                      Expanded(
@@ -3739,6 +3926,33 @@ index 84e3707..e471d8c 100644
                          style: TextStyle(
                            fontSize: 11,
                            fontWeight: FontWeight.w600,
+@@ -5564,7 +5563,7 @@ class _BypassChargingCardState extends State<_BypassChargingCard> {
+       return 'Connect to the device backend to check kernel bypass support.';
+     }
+     if (!snapshot.serviceEnabled) {
+-      return 'Rodin Essential is disabled. Enable it in Settings to use bypass charging.';
++      return 'Onyx Essential is disabled. Enable it in Settings to use bypass charging.';
+     }
+     if (_pending != null) return 'Applying the kernel bypass setting…';
+     if (!RodinBackend.instance.bypassChargingSupported) {
+@@ -5582,7 +5581,7 @@ class _BypassChargingCardState extends State<_BypassChargingCard> {
+     }
+     final int threshold = RodinBackend.instance.bypassThreshold;
+     if (RodinBackend.instance.bypassPhase == 1) {
+-      return 'OEM charging continues below $threshold%. At $threshold%, Rodin Essential '
++      return 'OEM charging continues below $threshold%. At $threshold%, Onyx Essential '
+           'requests bypass automatically. Charging resumes only if the level '
+           'falls two percentage points below the threshold.';
+     }
+@@ -5596,7 +5595,7 @@ class _BypassChargingCardState extends State<_BypassChargingCard> {
+     }
+     if (RodinBackend.instance.bypassPhase == 7) {
+       return 'Battery current shows charging despite the bypass request. '
+-          'Rodin Essential is not reporting this as working bypass.';
++          'Onyx Essential is not reporting this as working bypass.';
+     }
+     if (!_directPowerConfirmed) {
+       return 'The kernel charge-pause request is active. Power negotiation and '
 @@ -6063,14 +6062,12 @@ class _ChargingBatteryCard extends StatelessWidget {
                                vertical: 3,
                              ),
@@ -3758,7 +3972,60 @@ index 84e3707..e471d8c 100644
                                ),
                              ),
                              child: Text(
-@@ -7128,9 +7125,9 @@ class _TouchBoostScreenState extends State<TouchBoostScreen> {
+@@ -6299,7 +6296,7 @@ class _ChargingModeCardState extends State<_ChargingModeCard> {
+   String _detail(int selected) {
+     if (!snapshot.ready) return 'Charging backend unavailable';
+     if (!RodinBackend.instance.chargingControlSupported) {
+-      return 'Rodin Essential FCC control is unavailable on this kernel';
++      return 'Onyx Essential FCC control is unavailable on this kernel';
+     }
+     if (RodinBackend.instance.bypassChargingEnabled) {
+       return 'Disable Bypass Charging to use charging profiles';
+@@ -6312,7 +6309,7 @@ class _ChargingModeCardState extends State<_ChargingModeCard> {
+     }
+     return selected == 0
+         ? 'ROM and battery controller manage charging'
+-        : 'Rodin Essential fast-charge path · $selected W maximum';
++        : 'Onyx Essential fast-charge path · $selected W maximum';
+   }
+ 
+   void _select(int profile) {
+@@ -7008,7 +7005,7 @@ class _TouchBoostScreenState extends State<TouchBoostScreen> {
+     1 => '240 Hz native timing · simple testers display about 250',
+     2 => '480 Hz native timing · simple testers display about 500',
+     3 => 'Precise 1 ms Android output · native source remains 480 Hz',
+-    _ => 'Rodin Essential override released · ROM-managed timing',
++    _ => 'Onyx Essential override released · ROM-managed timing',
+   };
+ 
+   Color _profileAccent(int profile) => switch (profile) {
+@@ -7047,7 +7044,7 @@ class _TouchBoostScreenState extends State<TouchBoostScreen> {
+         final String engine = switch (controlPath) {
+           1 => 'Vendor HAL',
+           2 => 'Direct driver fallback',
+-          3 => 'Rodin Essential 1 ms output scheduler',
++          3 => 'Onyx Essential 1 ms output scheduler',
+           _ => snapshot.touchHal == 1 ? 'Vendor HAL ready' : 'Unavailable',
+         };
+         final bool applying =
+@@ -7076,7 +7073,7 @@ class _TouchBoostScreenState extends State<TouchBoostScreen> {
+               title: _profileTitle(activeProfile),
+               subtitle: snapshot.touchHal == 1
+                   ? '${_profileRate(activeProfile)} · $panel · $engine'
+-                  : 'Rodin Essential touch engine unavailable on this vendor stack',
++                  : 'Onyx Essential touch engine unavailable on this vendor stack',
+             ),
+             const SizedBox(height: 12),
+             _TouchProfileGrid(
+@@ -7121,16 +7118,16 @@ class _TouchBoostScreenState extends State<TouchBoostScreen> {
+                         const SizedBox(height: 3),
+                         Text(
+                           oemManaged
+-                              ? 'No Rodin Essential fixed-rate profile is active. Your ROM manages touch timing.'
++                              ? 'No Onyx Essential fixed-rate profile is active. Your ROM manages touch timing.'
+                               : !applying && touchAck == 1
+                               ? 'Reasserted after boot, screen wake, and vendor resets'
+                               : 'Waiting for the panel HAL to confirm every required mode',
                            style: TextStyle(
                              fontSize: 11.5,
                              height: 1.25,
@@ -3787,7 +4054,7 @@ index 84e3707..e471d8c 100644
              title: 'ROM ownership',
 -            text:
 -                'OEM Control stops Rodin Essential from applying this setting at boot or wake. Saved overrides restore automatically. Returning to OEM does not guess your ROM’s colour profile: the current appearance can remain until your ROM reapplies its display settings.',
-+            text: 'OEM Control stops Rodin Essential from applying this setting at boot or wake. Saved overrides restore automatically. Returning to OEM does not guess your ROM’s colour profile: the current appearance can remain until your ROM reapplies its display settings.',
++            text: 'OEM Control stops Onyx Essential from applying this setting at boot or wake. Saved overrides restore automatically. Returning to OEM does not guess your ROM’s colour profile: the current appearance can remain until your ROM reapplies its display settings.',
            ),
          ),
          const SizedBox(height: 9),
@@ -4052,6 +4319,15 @@ index 84e3707..e471d8c 100644
              ),
              const SizedBox(height: 9),
              _ChoiceCard(
+@@ -9675,7 +9697,7 @@ class _ResolutionScreenState extends State<ResolutionScreen> {
+               icon: Icons.check_circle_rounded,
+               accent: const Color(0xFFFFBE63),
+               message: isNative
+-                  ? 'Reset to Rodin Essential native panel'
++                  ? 'Reset to Onyx Essential native panel'
+                   : 'Applied $label ($width × $height @ ${density}DPI)',
+             ),
+           ),
 @@ -9748,8 +9770,7 @@ class _ResolutionScreenState extends State<ResolutionScreen> {
              height: 2712,
              density: nativeDensity,
@@ -4887,8 +5163,12 @@ index 84e3707..e471d8c 100644
            ),
            _buildDetailRow(
              colors,
-@@ -13159,15 +12768,11 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
-                       ? '0 (Rodin Essential unrestricted override)'
+@@ -13156,18 +12765,14 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
+             thermalState < 0
+                 ? 'Unavailable'
+                 : (thermalState == 0
+-                      ? '0 (Rodin Essential unrestricted override)'
++                      ? '0 (Onyx Essential unrestricted override)'
                        : '$thermalState (vendor managed)'),
            ),
 -          _buildDetailRow(
@@ -4905,6 +5185,23 @@ index 84e3707..e471d8c 100644
            ),
          ],
        ),
+@@ -13263,14 +12868,14 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
+               icon: Icons.monitor_heart_rounded,
+               accent: accent,
+               title: snapshot.ready && !snapshot.serviceEnabled
+-                  ? 'Rodin Essential Disabled'
++                  ? 'Onyx Essential Disabled'
+                   : snapshot.ready
+                   ? 'System Health Normal'
+                   : snapshot.connection == RodinConnectionState.connecting
+                   ? 'Connecting to System Service'
+                   : 'System Service Unavailable',
+               subtitle: snapshot.ready && !snapshot.serviceEnabled
+-                  ? 'Hardware control is paused; enable Rodin Essential in Settings'
++                  ? 'Hardware control is paused; enable Onyx Essential in Settings'
+                   : phase == 16
+                   ? 'All hardware controllers and telemetry streams active'
+                   : 'Waiting for system background service',
 @@ -14982,9 +14587,8 @@ class LiveDashboardHero extends StatelessWidget {
                                  boxShadow: ready
                                      ? <BoxShadow>[

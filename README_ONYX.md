@@ -77,3 +77,17 @@ daemon nuevo. No uses los exportadores AOSP como si ya tuvieran SELinux Onyx.
 `BASE_COMMIT.txt`. `diagnostico_onyx_pendientes.sh` recopila información de touch
 y carga en modo de solo lectura; no ejecuta lshal, que se quedó bloqueado en
 la captura del teléfono.
+
+## Correcciones tras la primera prueba real
+
+Se corrige el nombre visible de la aplicación a Onyx Essential y se aplica
+llvm-strip --strip-unneeded al motor Flutter antes de empaquetarlo. El job
+reporta los tamaños antes/después. El tamaño final debe comprobarse en el APK
+resultante: no se ha generado un APK nuevo aquí.
+
+GPU/CPU/DisplayFeature siguen pendientes de diagnóstico del dispositivo. No
+se atribuye el fallo a permisos, SELinux o HAL sin ver el error real.
+`diagnostico_onyx_instalado.sh` recopila el snapshot, logs, contextos y nodos
+sin modificar controles del dispositivo. Primero intentar GPU, CPU y color en
+la app, después ejecutar el diagnóstico como root. Carga y touch permanecen
+pendientes; este parche no los convierte en funciones implementadas.
