@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 /// Thin, resolved strokes: glass translucency must not erase its boundaries.
-class RodinSurfaceLines {
-  const RodinSurfaceLines._();
+class OnyxSurfaceLines {
+  const OnyxSurfaceLines._();
 
   static Color border(ColorScheme colors) => Color.alphaBlend(
     colors.onSurfaceVariant.withValues(

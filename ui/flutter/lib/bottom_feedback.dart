@@ -4,7 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 /// One geometry contract for the floating dock, scroll tails and feedback.
-abstract final class RodinBottomLayout {
+abstract final class OnyxBottomLayout {
   static const double dockHeight = 68;
   static const double dockGap = 12;
   static const double dockFade = 24;
@@ -23,8 +23,8 @@ abstract final class RodinBottomLayout {
 }
 
 /// Shared GPU/CPU/memory feedback. Does not capture taps or claim success.
-class RodinFeedbackOverlay extends StatelessWidget {
-  const RodinFeedbackOverlay({
+class OnyxFeedbackOverlay extends StatelessWidget {
+  const OnyxFeedbackOverlay({
     required this.tag,
     required this.message,
     required this.icon,
@@ -47,7 +47,7 @@ class RodinFeedbackOverlay extends StatelessWidget {
     return Positioned(
       left: 16 + MediaQuery.viewPaddingOf(context).left,
       right: 16 + MediaQuery.viewPaddingOf(context).right,
-      bottom: RodinBottomLayout.contentClearance(context),
+      bottom: OnyxBottomLayout.contentClearance(context),
       child: IgnorePointer(
         child: ExcludeSemantics(
           excluding: !visible,
@@ -60,7 +60,7 @@ class RodinFeedbackOverlay extends StatelessWidget {
               opacity: visible ? 1 : 0,
               duration: reducedMotion ? Duration.zero : duration,
               curve: Curves.easeOutCubic,
-              child: RodinFeedbackCard(
+              child: OnyxFeedbackCard(
                 tag: tag,
                 message: message,
                 icon: icon,
@@ -74,8 +74,8 @@ class RodinFeedbackOverlay extends StatelessWidget {
   }
 }
 
-class RodinFeedbackCard extends StatelessWidget {
-  const RodinFeedbackCard({
+class OnyxFeedbackCard extends StatelessWidget {
+  const OnyxFeedbackCard({
     required this.tag,
     required this.message,
     required this.icon,

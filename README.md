@@ -1,282 +1,100 @@
-> POCO F7 adaptation: see [README_ONYX.md](README_ONYX.md) for current status and limitations. The historical Rodin feature descriptions below are not a support claim for Onyx.
-
 # Onyx Essential
 
-Rodin Essential is a native hardware-control application for Xiaomi Rodin
-(POCO F7 / Redmi Turbo 4 pro ) and its Snapdragon 8s Gen 4 platform.
-It combines an Android `NativeActivity`, a Flutter AOT interface, a Rust host
-runtime, and a separately privileged Rust daemon. The UI and hardware-control
-logic remain native/AOT. A small, framework-only DEX adapter provides the
-Quick Settings bypass tile and Android predictive Back callbacks; it contains
-no AndroidX, Compose or third-party managed libraries.
+Hardware control application for **POCO F7 (`onyx`)**, Snapdragon 8s Gen 4
+(`SM8735`), Adreno 825 GPU and Android ARM64. It includes a Flutter interface,
+a Rust host and a separate privileged daemon provided by the root module.
 
-The APK never runs as root, does not use the system UID, and does not request
-privileged Android permissions. Kernel and vendor controls are owned by the
-daemon and reached through authenticated local transports restricted to the
-installed application UID.
+<img src="branding/onyx-icon-master.png" alt="Onyx Essential logo" width="128" />
 
-## Supported target
+## Credits and origin
 
-- Device codename: `onyx`
-- SoC: Qualcomm / Snapdragon 8s Gen 4
-- CPU: 7× Cortex-A720
-- 1x Cortex X-4 (4+3+1 policies), up to 3.25 GHz
-- GPU: Adreno 825, 8 cores, up to 1150 MHz
-- ABI: ARM64
-- Android: API 31 or newer
-- Kernel userspace: 16 KB page-compatible native binaries
-- Vendor dependencies: Rodin touch and display AIDL services plus MediaTek GED
+**Onyx Essential is an adaptation of Rodin Essential, created by
+[NEESCHAL-3](https://github.com/NEESCHAL-3) and contributors.**
+The Onyx name and POCO F7 support do not replace the original authorship.
 
-This is device-specific software. Other devices are rejected by the root-module
-installer and are not supported by the included AOSP policy.
+- Original project: [Rodin Essential](https://github.com/NEESCHAL-3/Rodin-Essential).
+- Fork: [Godnyx-Essential](https://github.com/davvv98/Godnyx-Essential).
+- Onyx / POCO F7 adaptation maintained by **davvv98**.
+- Adaptation changes: KGSL backend, F7 CPU policies, Sconfig selector, Onyx
+  identity, icons, documentation and build adjustments.
 
-## Main features
+The inherited architecture and features remain the work of the original author
+and contributors. See [CREDITS.md](CREDITS.md), [NOTICE](NOTICE) and [LICENSE](LICENSE).
 
-- Four persistent GPU performance profiles with live hardware readback.
-- Mali devfreq range, governor, GED boost, power-policy, and OPP controls.
-- CPU core mask, independent cluster governors, and validated per-cluster
-  minimum/maximum or sustained exact-lock controls sourced from the live kernel
-  OPP table.
-- UFS scheduler selection across every detected UFS logical unit.
-- Touch profiles for 240 Hz native timing, 480 Hz native timing, and the
-  original v1.18.0 one-millisecond Android output stream generated from the
-  native 480 Hz source.
-- Xiaomi touch/display AIDL integration, color modes, expert calibration,
-  sunlight mode, HDR/video controls, resolution, and density controls.
-- ZRAM size, algorithm, swappiness, compaction, charging, and power telemetry.
-- Kernel-supported bypass charging with Immediate or 20/40/80/90% thresholds,
-  daemon-owned persistence and measured battery-flow reporting.
-- Whole-app hardware-control pause and reset, plus OEM Control defaults for
-  touch response and display colour/temperature.
-- [System Colors](docs/SYSTEM_COLORS.md): Android Material You seed palettes,
-  wallpaper reset, style previews, and capability-based native color readback
-  without a HyperOS, ColorOS, or AOSP ROM-name allowlist.
-- Daemon-owned persistence and background reassertion after boot, screen wake,
-  vendor resets, app force-close, or removal from recents.
-- Configurable in-app motion timing with native 120 Hz frame pacing.
-- [Per-App Controls](docs/PER_APP_CONTROLS_IMPLEMENTATION.md): foreground touch,
-  refresh-rate, CPU and GPU overrides, with saved profiles and global/ROM
-  restoration. Starts disabled; system apps are hidden by default.
-- [Memory DVFS & UFS](docs/MEMORY_STORAGE_TRIALS.md): supported dynamic ranges,
-  exact driver-policy requests and OEM Reset. These are session controls,
-  recovered to originals after daemon restart or reboot.
-- Bypass Charging Quick Settings/Control Center tile with direct access to
-  Charging Control on long-press.
+## Identity
 
-## Screenshots
+| Component | Identifier |
+| --- | --- |
+| Application | Onyx Essential |
+| Package | `io.github.davvv98.onyxessential` |
+| Activity | `OnyxActivity` |
+| Daemon | `onyx_daemon` |
+| Diagnostic client | `onyx_ctl` |
+| Host library | `libonyx_essential_host.so` |
+| Protocol | `onyx.4` |
+| Internal version | `1.18.5` / `11805` |
 
-The redesigned interface groups live device telemetry and hardware tuning into
-focused panels for each subsystem.
+## Adaptation features
 
-<table align="center" border="0" cellpadding="8" cellspacing="0">
-  <tr>
-    <td align="center" style="border: 0;"><a href="docs/screenshots/home-redesigned.png"><img src="docs/screenshots/home-redesigned.png" alt="Home dashboard" width="150"></a><br><sub><b>Home</b> - Device Pulse and quick controls</sub></td>
-    <td align="center" style="border: 0;"><a href="docs/screenshots/control-hubs-redesigned.png"><img src="docs/screenshots/control-hubs-redesigned.png" alt="Control hubs" width="150"></a><br><sub><b>Control Hubs</b> - Hardware subsystem navigation</sub></td>
-    <td align="center" style="border: 0;"><a href="docs/screenshots/cpu.png"><img src="docs/screenshots/cpu.png" alt="CPU controls" width="150"></a><br><sub><b>CPU</b> - Core and frequency control</sub></td>
-    <td align="center" style="border: 0;"><a href="docs/screenshots/gpu.png"><img src="docs/screenshots/gpu.png" alt="GPU controls" width="150"></a><br><sub><b>GPU</b> - Mali profiles and GED</sub></td>
-  </tr>
-  <tr>
-    <td align="center" style="border: 0;"><a href="docs/screenshots/touch.png"><img src="docs/screenshots/touch.png" alt="Touch controls" width="150"></a><br><sub><b>Touch</b> - Response profiles</sub></td>
-    <td align="center" style="border: 0;"><a href="docs/screenshots/display.png"><img src="docs/screenshots/display.png" alt="Display controls" width="150"></a><br><sub><b>Display</b> - Color and HDR tuning</sub></td>
-    <td align="center" style="border: 0;"><a href="docs/screenshots/battery.png"><img src="docs/screenshots/battery.png" alt="Battery controls" width="150"></a><br><sub><b>Battery</b> - Charging telemetry</sub></td>
-    <td align="center" style="border: 0;"><a href="docs/screenshots/zram.png"><img src="docs/screenshots/zram.png" alt="ZRAM controls" width="150"></a><br><sub><b>ZRAM</b> - Memory compression</sub></td>
-  </tr>
-  <tr>
-    <td align="center" style="border: 0;"><a href="docs/screenshots/diagnostics.png"><img src="docs/screenshots/diagnostics.png" alt="Diagnostics" width="150"></a><br><sub><b>Diagnostics</b> - Runtime health checks</sub></td>
-    <td align="center" style="border: 0;"><a href="docs/screenshots/support.png"><img src="docs/screenshots/support.png" alt="Support and project information" width="150"></a><br><sub><b>Support</b> - Community and safety information</sub></td>
-    <td align="center" style="border: 0;"><a href="docs/screenshots/system-colors.png"><img src="docs/screenshots/system-colors.png" alt="System Colors" width="150"></a><br><sub><b>System Colors</b> - Material You palette control</sub></td>
-    <td align="center" style="border: 0;"><a href="docs/screenshots/advanced-configuration.png"><img src="docs/screenshots/advanced-configuration.png" alt="Advanced Configuration" width="150"></a><br><sub><b>Advanced Configuration</b> - CPU governors and device tuning</sub></td>
-  </tr>
-  <tr>
-    <td align="center" style="border: 0;"><a href="docs/screenshots/resolution.png"><img src="docs/screenshots/resolution.png" alt="Resolution controls" width="150"></a><br><sub><b>Resolution</b> - Canvas, density, and refresh settings</sub></td>
-    <td align="center" style="border: 0;"><a href="docs/screenshots/additional-screen-1.png"><img src="docs/screenshots/additional-screen-1.png" alt="Additional screen 1" width="150"></a><br><sub><b>Additional Screen 1</b> - Device configuration</sub></td>
-    <td align="center" style="border: 0;"><a href="docs/screenshots/additional-screen-2.png"><img src="docs/screenshots/additional-screen-2.png" alt="Additional screen 2" width="150"></a><br><sub><b>Additional Screen 2</b> - Device configuration</sub></td>
-    <td align="center" style="border: 0;"><a href="docs/screenshots/system-colors-updated.png"><img src="docs/screenshots/system-colors-updated.png" alt="Updated System Colors" width="150"></a><br><sub><b>System Colors</b> - Updated palette controls</sub></td>
-  </tr>
-</table>
+- CPU policies `0`, `2`, `5`, `7`, governors and ranges validated against the
+  kernel frequency tables. Requests resolve to exact kHz values.
+- Qualcomm KGSL GPU profiles: Stock, Gaming, Saver and Extreme. Observed
+  frequency table: **264–1150 MHz**, governor `msm-adreno-tz`.
+- Explicit Xiaomi Sconfig selection in CPU, independent of frequency requests
+  and GPU profiles, with original-value restoration.
+- Separate saved requests and effective limits. An accepted write with different
+  effective bounds is not reported as an exact frequency match.
+- Inherited per-app controls, telemetry, ZRAM and storage features depend on
+  the nodes actually available on the device.
+- Red/gold Onyx logo and adaptive icon; Sconfig cards grouped into
+  Standard/Performance with Normal, Game and NoLimits modes.
 
-## Performance profiles
+## Status and known limitations
 
-| Profile | GPU range and governor | GED / power policy | CPU behavior |
-| --- | --- | --- | --- |
-| Stock Balanced | Vendor-managed 260–1300 MHz, `dummy` | GED off, `coarse_demand` | Unchanged; controlled separately |
-| Gaming Dynamic | 260–1300 MHz, `simple_ondemand` | GED on, `always_on` | Unchanged; controlled separately |
-| Battery Saver | 260–598 MHz, `powersave` | GED off, `coarse_demand` | Unchanged; controlled separately |
-| Extreme Beast | Fixed 1300 MHz, `performance`, DVFS off | GED on, `always_on` | Unchanged; controlled separately |
+Device testing confirmed 1150 MHz GPU operation with Sconfig scenario 6.
+This does not guarantee every frequency in every scenario. Driver and vendor
+services can change effective limits; the backend does not continuously rewrite
+the requested frequencies to fight those changes.
 
-GPU profiles never modify CPU governors, CPU clock ranges, or CPU core state.
-Vendor CPU and platform thermal services remain running in every mode. Gaming
-Dynamic and Extreme Beast override the Mali cooling constraint and can still
-cause extreme heat, rapid battery drain, instability, or an emergency hardware
-shutdown.
+Fixed-rate touch 240/480/resampling and charging power profiles **still require
+adaptation**. OEM charging and available telemetry remain enabled. Bypass is
+available only when the explicit nodes required by the backend are detected;
+they were absent from the supplied device snapshot.
 
-Custom CPU ranges remain separate from GPU profiles and governors. While at
-least one custom CPU range is active, the daemon selects Rodin's OEM
-`thermal-nolimits` configuration so Xiaomi's userspace policy cannot replace an
-exact lock with a lower ceiling. It keeps the thermal services alive, remembers
-the configuration that was active beforehand, and restores it when the final
-custom CPU range is reset.
+Xiaomi DisplayFeature AIDL is retained, but an accepted transaction does not
+prove that every display effect works on the port. Native ROM integration and
+SELinux policies have not been validated for this variant.
 
-## Integration choices
+## Build and installation
 
-| Method | APK privilege | Backend | Persistence |
-| --- | --- | --- | --- |
-| AOSP ROM integration | Normal app UID | Root init daemon | `/data/system/rodin-essential/state.conf` |
-| KernelSU Next or Magisk | Normal app UID | Root module daemon | `/data/adb/rodin-essential/state.conf` |
-| Standalone APK | Normal app UID | None | Hardware controls unavailable |
+The prepared route is **GitHub Actions → onyx-release → Run workflow**.
+See [GITHUB_ACTIONS.md](GITHUB_ACTIONS.md) for signing and artifacts, or
+[docs/BUILDING.md](docs/BUILDING.md) for local builds.
 
-For a ROM release, use the AOSP integration. It installs the APK and daemon in
-`/product`, creates a dedicated app SELinux domain, restricts the control socket
-to that domain, starts the daemon after boot, and restores saved state without a
-root manager.
+Install the complete module and reboot. The APK and daemon must both use
+`onyx.4`. The new application package has separate Android data and does not
+update the previous package. The internal root module identifier is retained
+for upgrade compatibility; its processes and executables use Onyx names.
 
-See [AOSP ROM integration](docs/ROM_INTEGRATION.md) for the complete maintainer
-workflow and [Architecture](docs/ARCHITECTURE.md) for runtime details.
+## Guides
 
-## Build from source
+- [Sconfig and OEM controls](docs/OEM_CONTROL.md)
+- [CPU and GPU diagnostics](docs/ARCHITECTURE.md)
+- [Per-app controls](docs/PER_APP_CONTROLS_IMPLEMENTATION.md)
+- [Flutter engine and APK size](docs/FLUTTER_RUNTIME.md)
+- [System colors](docs/SYSTEM_COLORS.md)
+- [Charging and bypass](docs/BYPASS_CHARGING.md)
+- [ROM integration: pending validation](docs/ROM_INTEGRATION.md)
+- [Changelog](CHANGELOG.md)
+- [Branding and icons](branding/README.md)
 
-Required tools:
+## Validation
 
-- Linux host
-- Flutter SDK and revision-matched Flutter engine checkout
-- Rust toolchain with `aarch64-linux-android`
-- Android SDK, platform 36, build-tools, and NDK r27 or newer
-- JDK 17 or newer, `ninja`, `zip`, `unzip`, and standard ELF tools
-
-Build the pinned engine once:
-
-```bash
-rustup target add aarch64-linux-android
-./tools/build-flutter-engine.sh
-```
-
-Build without touching a connected device:
-
-```bash
-RODIN_BUILD_ONLY=1 ./build-and-install.sh
-```
-
-Output is written under `out/release/<timestamp>/`. The build verifies
-Flutter analysis, ARM64 AOT output, the restricted platform DEX adapter, APK signing, 16 KB ZIP alignment,
-16 KB ELF segment alignment, and a content stamp covering the packaged Flutter
-assets and ICU data. If no signing key is supplied, a stable development key is
-created once under the ignored `out/signing/` directory and reused by later
-local builds.
-
-For release signing, set:
-
-```bash
-RODIN_KEYSTORE=/absolute/path/release.jks \
-RODIN_KEY_ALIAS=release \
-RODIN_KEYSTORE_PASS='store-password' \
-RODIN_KEY_PASS='key-password' \
-RODIN_BUILD_ONLY=1 ./build-and-install.sh
-```
-
-## Export for an AOSP tree
-
-```bash
-RODIN_KEYSTORE=/absolute/path/rom-app.jks \
-RODIN_KEY_ALIAS=rodin-essential \
-RODIN_KEYSTORE_PASS='store-password' \
-RODIN_KEY_PASS='key-password' \
-  ./tools/export-aosp-bundle.sh
-```
-
-The generated `dist/aosp/RodinEssential-<timestamp>/` directory contains the
-APK, daemon, control client, `Android.bp`, init service, split product/vendor
-SELinux policy, the APK public certificate used by the dedicated app-domain
-mapping, and checksums. Keep the same private key for every ROM update; the
-private key is never copied into the bundle.
-
-To build, stage, and wire the integration into an existing ROM source tree in
-one command, provide the Rodin product makefile and BoardConfig path:
-
-```bash
-RODIN_KEYSTORE=/absolute/path/rom-app.jks \
-RODIN_KEY_ALIAS=rodin-essential \
-RODIN_KEYSTORE_PASS='store-password' \
-RODIN_KEY_PASS='key-password' \
-  ./tools/integrate-aosp-rom.sh /absolute/path/to/aosp \
-    device/xiaomi/rodin/device.mk \
-    device/xiaomi/rodin/BoardConfig.mk
-```
-
-The helper creates `vendor/rodin-essential`, verifies the complete build, and
-adds the two exact include lines only when absent. It refuses paths outside the
-selected source tree and never replaces an existing integration directory.
-Passing only the AOSP root keeps the previous stage-only behavior.
-
-## KernelSU Next and Magisk module
-
-For an existing rooted ROM, build the combined application and daemon module:
-
-```bash
-RODIN_KEYSTORE=/absolute/path/release.jks \
-RODIN_KEY_ALIAS=release \
-RODIN_KEYSTORE_PASS='store-password' \
-RODIN_KEY_PASS='key-password' \
-  ./tools/build-kernelsu-next-module.sh
-```
-
-Install the ZIP from KernelSU Next Manager or the Magisk app while Android is
-running. The installer registers the bundled APK as an ordinary user app and
-the module runs only the separate hardware daemon as root. No live SELinux
-patch, system overlay, privileged-app conversion, or app-to-root socket rule is
-used. The direct Unix transport uses `SO_PEERCRED`. ROMs that block cross-domain
-Unix `connectto` use a root-privileged localhost port instead; the app first
-proves from its own UID/SELinux context that low-port binding is denied, and the
-daemon resolves the accepted client's UID from `/proc/net/tcp` before serving a
-command. A daemon-initiated Unix path remains as a compatibility fallback.
-Module Action reports which authenticated transport completed instead of
-treating a root-only control-client ping as proof. The package uses `skip_mount`;
-because it overlays no partition files, KernelSU does not require a metamodule.
-Recovery installation is not supported.
-
-Keep the signing key for every future module update. Android rejects an APK
-update signed by a different certificate. The first release after the signing
-identity reset includes a one-time migration for module installations: it tries
-a normal update first and only removes/reinstalls the user application when
-Android reports a certificate mismatch. Hardware profiles stored under
-`/data/adb/rodin-essential` remain intact, while application-local preferences
-reset once. Later releases signed by the retained key update normally.
-
-The same ZIP can also act as a temporary update layer over a ROM-native Rodin
-Essential installation when that ROM APK uses the same signing certificate as
-the release APK. The installer updates the app without clearing its data, the
-module daemon reuses `/data/system/rodin-essential`, and native init is stopped
-before the module daemon starts. Removing the module rolls the app back to the
-ROM copy and restarts the native service. A differently signed ROM build is
-rejected without uninstalling the app or deleting its data; that build must be
-updated through its maintainer's OTA or original signing key.
-
-## Repository layout
-
-```text
-android/
-  aosp/                 AOSP prebuilt, init, and SELinux integration template
-  kernelsu-next/        KernelSU Next and Magisk module source
-  package/              Manifest and Android resources
-  platform/             Minimal Android tile and Back callback adapters
-docs/                   Architecture, build, and ROM maintainer documentation
-runtime/
-  daemon-rust/          Privileged hardware backend and control client
-  flutter-engine/       Embedder header and ignored pinned engine prebuilts
-  host-rust/            NativeActivity, Flutter embedder, JNI, and IPC bridge
-tools/                  Engine, AOSP export, and module build scripts
-ui/flutter/             Flutter AOT interface
-```
-
-## Documentation
-
-- [Architecture](docs/ARCHITECTURE.md)
-- [Building and verification](docs/BUILDING.md)
-- [AOSP ROM integration](docs/ROM_INTEGRATION.md)
-- [Unpacked EROFS/ext4 ROM integration](docs/UNPACKED_ROM_PORTER_GUIDE.md): Rodin-only
-  additions and a merge tool using the porter's own ROM policy.
-- [Flutter runtime pin](docs/FLUTTER_RUNTIME.md)
-- [Commit convention](docs/COMMITS.md)
+This revision has passed 103 daemon unit tests and three integration tests,
+Android ARM64 Rust checks for the host and daemon, contract checks, Dart syntax,
+XML and package/JNI consistency checks. The latest identity and Sconfig panel
+still require a full APK build and visual validation on the device.
 
 ## License
 
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).
+Apache-2.0. [LICENSE](LICENSE) and source copyright notices are preserved.

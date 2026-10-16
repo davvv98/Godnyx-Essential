@@ -1,12 +1,12 @@
 #![cfg(not(target_os = "android"))]
 
-use rodin_essential_backend::handle_command;
+use onyx_essential_backend::handle_command;
 use std::fs;
 
 #[test]
 fn removed_wake_control_is_not_restored_reported_or_saved_after_upgrade() {
     let dir = std::env::temp_dir().join(
-        format!("rodin-retired-touch-{}", std::process::id())
+        format!("onyx-retired-touch-{}", std::process::id())
             + &format!(
                 "-{}",
                 std::time::SystemTime::now()
@@ -27,7 +27,7 @@ fn removed_wake_control_is_not_restored_reported_or_saved_after_upgrade() {
     )
     .unwrap();
     // This executable has one test and no concurrent environment access.
-    unsafe { std::env::set_var("RODIN_STATE_DIR", &dir) };
+    unsafe { std::env::set_var("ONYX_STATE_DIR", &dir) };
 
     let snapshot = handle_command("GET snapshot");
     assert!(!snapshot.contains("dt2w"), "{snapshot}");

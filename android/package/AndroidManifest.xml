@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="io.github.neeschal.rodinessential"
+    package="io.github.davvv98.onyxessential"
     android:versionCode="11805"
     android:versionName="1.18.5">
 
@@ -29,16 +29,16 @@
         android:supportsRtl="true">
 
         <activity
-            android:name=".RodinActivity"
+            android:name=".OnyxActivity"
             android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout|uiMode|density|colorMode|assetsPaths"
             android:exported="true"
             android:launchMode="singleTask"
             android:screenOrientation="unspecified"
-            android:theme="@style/Theme.RodinEssential">
+            android:theme="@style/Theme.OnyxEssential">
 
             <meta-data
                 android:name="android.app.lib_name"
-                android:value="rodin_essential_host" />
+                android:value="onyx_essential_host" />
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

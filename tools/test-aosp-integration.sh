@@ -1,56 +1,56 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-RODIN_PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-RODIN_AOSP="$RODIN_PROJECT_ROOT/android/aosp"
-RODIN_PRODUCT_PRIVATE="$RODIN_AOSP/sepolicy/product/private"
-RODIN_VENDOR_POLICY="$RODIN_AOSP/sepolicy/vendor/rodin_daemon.te"
-RODIN_GENFS="$RODIN_AOSP/sepolicy/vendor/genfs_contexts"
+ONYX_PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ONYX_AOSP="$ONYX_PROJECT_ROOT/android/aosp"
+ONYX_PRODUCT_PRIVATE="$ONYX_AOSP/sepolicy/product/private"
+ONYX_VENDOR_POLICY="$ONYX_AOSP/sepolicy/vendor/onyx_daemon.te"
+ONYX_GENFS="$ONYX_AOSP/sepolicy/vendor/genfs_contexts"
 
-for RODIN_REQUIRED in \
-    Android.bp BoardConfigRodinEssential.mk rodin-essential.mk rodin_daemon.rc \
-    sepolicy/product/public/rodin_daemon.te \
+for ONYX_REQUIRED in \
+    Android.bp BoardConfigOnyxEssential.mk onyx-essential.mk onyx_daemon.rc \
+    sepolicy/product/public/onyx_daemon.te \
     sepolicy/product/private/file_contexts \
     sepolicy/product/private/keys.conf \
     sepolicy/product/private/mac_permissions.xml \
-    sepolicy/product/private/rodin_app.te \
-    sepolicy/product/private/rodin_daemon.te \
+    sepolicy/product/private/onyx_app.te \
+    sepolicy/product/private/onyx_daemon.te \
     sepolicy/product/private/seapp_contexts \
     sepolicy/vendor/genfs_contexts \
-    sepolicy/vendor/rodin_daemon.te; do
-    [ -s "$RODIN_AOSP/$RODIN_REQUIRED" ] || {
-        echo "Missing AOSP integration file: $RODIN_REQUIRED" >&2
+    sepolicy/vendor/onyx_daemon.te; do
+    [ -s "$ONYX_AOSP/$ONYX_REQUIRED" ] || {
+        echo "Missing AOSP integration file: $ONYX_REQUIRED" >&2
         exit 1
     }
 done
 
-grep -Fq 'presigned: true' "$RODIN_AOSP/Android.bp"
-grep -Fq 'preprocessed: true' "$RODIN_AOSP/Android.bp"
-grep -Fq 'dex_preopt:' "$RODIN_AOSP/Android.bp"
-grep -Fq '"libbinder_ndk"' "$RODIN_AOSP/Android.bp"
+grep -Fq 'presigned: true' "$ONYX_AOSP/Android.bp"
+grep -Fq 'preprocessed: true' "$ONYX_AOSP/Android.bp"
+grep -Fq 'dex_preopt:' "$ONYX_AOSP/Android.bp"
+grep -Fq '"libbinder_ndk"' "$ONYX_AOSP/Android.bp"
 if grep -Eq 'certificate:[[:space:]]*"platform"|check_elf_files:[[:space:]]*false' \
-    "$RODIN_AOSP/Android.bp"; then
+    "$ONYX_AOSP/Android.bp"; then
     echo "AOSP prebuilts must retain their signing identity and ELF checks" >&2
     exit 1
 fi
 
-grep -Fq 'PRODUCT_PACKAGES_DEBUG +=' "$RODIN_AOSP/rodin-essential.mk"
-if sed -n '/^PRODUCT_PACKAGES +=/,/^$/p' "$RODIN_AOSP/rodin-essential.mk" \
-    | grep -Fq 'rodin_ctl'; then
-    echo "rodin_ctl must not be installed in production user builds" >&2
+grep -Fq 'PRODUCT_PACKAGES_DEBUG +=' "$ONYX_AOSP/onyx-essential.mk"
+if sed -n '/^PRODUCT_PACKAGES +=/,/^$/p' "$ONYX_AOSP/onyx-essential.mk" \
+    | grep -Fq 'onyx_ctl'; then
+    echo "onyx_ctl must not be installed in production user builds" >&2
     exit 1
 fi
 
-grep -Fxq '[@RODIN_ESSENTIAL]' "$RODIN_PRODUCT_PRIVATE/keys.conf"
-grep -Fq 'vendor/rodin-essential/prebuilt/RodinEssential.x509.pem' \
-    "$RODIN_PRODUCT_PRIVATE/keys.conf"
-grep -Fq '<signer signature="@RODIN_ESSENTIAL">' \
-    "$RODIN_PRODUCT_PRIVATE/mac_permissions.xml"
-grep -Fq '<package name="io.github.neeschal.rodinessential">' \
-    "$RODIN_PRODUCT_PRIVATE/mac_permissions.xml"
-grep -Fq '<seinfo value="rodin_essential"' \
-    "$RODIN_PRODUCT_PRIVATE/mac_permissions.xml"
-python3 - "$RODIN_PRODUCT_PRIVATE/mac_permissions.xml" <<'PY'
+grep -Fxq '[@ONYX_ESSENTIAL]' "$ONYX_PRODUCT_PRIVATE/keys.conf"
+grep -Fq 'vendor/onyx-essential/prebuilt/OnyxEssential.x509.pem' \
+    "$ONYX_PRODUCT_PRIVATE/keys.conf"
+grep -Fq '<signer signature="@ONYX_ESSENTIAL">' \
+    "$ONYX_PRODUCT_PRIVATE/mac_permissions.xml"
+grep -Fq '<package name="io.github.davvv98.onyxessential">' \
+    "$ONYX_PRODUCT_PRIVATE/mac_permissions.xml"
+grep -Fq '<seinfo value="onyx_essential"' \
+    "$ONYX_PRODUCT_PRIVATE/mac_permissions.xml"
+python3 - "$ONYX_PRODUCT_PRIVATE/mac_permissions.xml" <<'PY'
 import sys
 import xml.etree.ElementTree as ET
 
@@ -60,120 +60,120 @@ if root.tag != "policy":
 PY
 
 grep -Fxq \
-    'user=_app seinfo=rodin_essential name=io.github.neeschal.rodinessential domain=rodin_app type=app_data_file levelFrom=all' \
-    "$RODIN_PRODUCT_PRIVATE/seapp_contexts"
-grep -Fq 'untrusted_app_domain(rodin_app)' "$RODIN_PRODUCT_PRIVATE/rodin_app.te"
-grep -Fq 'net_domain(rodin_app)' "$RODIN_PRODUCT_PRIVATE/rodin_app.te"
-grep -Fq 'typeattribute rodin_app coredomain;' "$RODIN_PRODUCT_PRIVATE/rodin_app.te"
-grep -Fq 'allow rodin_app rodin_daemon:unix_stream_socket connectto;' \
-    "$RODIN_PRODUCT_PRIVATE/rodin_daemon.te"
-grep -Fq 'typeattribute rodin_daemon mlstrustedsubject;' \
-    "$RODIN_PRODUCT_PRIVATE/rodin_daemon.te"
+    'user=_app seinfo=onyx_essential name=io.github.davvv98.onyxessential domain=onyx_app type=app_data_file levelFrom=all' \
+    "$ONYX_PRODUCT_PRIVATE/seapp_contexts"
+grep -Fq 'untrusted_app_domain(onyx_app)' "$ONYX_PRODUCT_PRIVATE/onyx_app.te"
+grep -Fq 'net_domain(onyx_app)' "$ONYX_PRODUCT_PRIVATE/onyx_app.te"
+grep -Fq 'typeattribute onyx_app coredomain;' "$ONYX_PRODUCT_PRIVATE/onyx_app.te"
+grep -Fq 'allow onyx_app onyx_daemon:unix_stream_socket connectto;' \
+    "$ONYX_PRODUCT_PRIVATE/onyx_daemon.te"
+grep -Fq 'typeattribute onyx_daemon mlstrustedsubject;' \
+    "$ONYX_PRODUCT_PRIVATE/onyx_daemon.te"
 grep -Fq 'settings_service:service_manager find;' \
-    "$RODIN_PRODUCT_PRIVATE/rodin_daemon.te"
+    "$ONYX_PRODUCT_PRIVATE/onyx_daemon.te"
 grep -Fq 'window_service:service_manager find;' \
-    "$RODIN_PRODUCT_PRIVATE/rodin_daemon.te"
+    "$ONYX_PRODUCT_PRIVATE/onyx_daemon.te"
 grep -Fq 'activity_service:service_manager find;' \
-    "$RODIN_PRODUCT_PRIVATE/rodin_daemon.te"
+    "$ONYX_PRODUCT_PRIVATE/onyx_daemon.te"
 grep -Fq 'overlay_service:service_manager find;' \
-    "$RODIN_PRODUCT_PRIVATE/rodin_daemon.te"
-grep -Fq 'allow system_server rodin_daemon:fd use;' \
-    "$RODIN_PRODUCT_PRIVATE/rodin_daemon.te"
-grep -Fq 'allow system_server rodin_daemon:fifo_file write;' \
-    "$RODIN_PRODUCT_PRIVATE/rodin_daemon.te"
-grep -Fq 'toolbox_exec:file' "$RODIN_PRODUCT_PRIVATE/rodin_daemon.te"
-grep -Fq 'execute_no_trans' "$RODIN_PRODUCT_PRIVATE/rodin_daemon.te"
-if grep -Fq 'shell_exec:file' "$RODIN_PRODUCT_PRIVATE/rodin_daemon.te"; then
+    "$ONYX_PRODUCT_PRIVATE/onyx_daemon.te"
+grep -Fq 'allow system_server onyx_daemon:fd use;' \
+    "$ONYX_PRODUCT_PRIVATE/onyx_daemon.te"
+grep -Fq 'allow system_server onyx_daemon:fifo_file write;' \
+    "$ONYX_PRODUCT_PRIVATE/onyx_daemon.te"
+grep -Fq 'toolbox_exec:file' "$ONYX_PRODUCT_PRIVATE/onyx_daemon.te"
+grep -Fq 'execute_no_trans' "$ONYX_PRODUCT_PRIVATE/onyx_daemon.te"
+if grep -Fq 'shell_exec:file' "$ONYX_PRODUCT_PRIVATE/onyx_daemon.te"; then
     echo "AOSP daemon must call cmd directly instead of executing shell wrappers" >&2
     exit 1
 fi
-if grep -Eq 'allow[[:space:]]+(appdomain|untrusted_app)[[:space:]]+rodin_daemon' \
-    "$RODIN_PRODUCT_PRIVATE/rodin_daemon.te"; then
-    echo "AOSP socket access must remain restricted to rodin_app" >&2
+if grep -Eq 'allow[[:space:]]+(appdomain|untrusted_app)[[:space:]]+onyx_daemon' \
+    "$ONYX_PRODUCT_PRIVATE/onyx_daemon.te"; then
+    echo "AOSP socket access must remain restricted to onyx_app" >&2
     exit 1
 fi
 
-if grep -Eq '(^|[[:space:]])permissive[[:space:]]+rodin_daemon|allow[[:space:]]+rodin_daemon[[:space:]]+sysfs:file|ctl_(start|stop)_prop' \
-    "$RODIN_AOSP"/sepolicy/{product/private,product/public,vendor}/*; then
+if grep -Eq '(^|[[:space:]])permissive[[:space:]]+onyx_daemon|allow[[:space:]]+onyx_daemon[[:space:]]+sysfs:file|ctl_(start|stop)_prop' \
+    "$ONYX_AOSP"/sepolicy/{product/private,product/public,vendor}/*; then
     echo "AOSP policy contains an unsafe or obsolete grant" >&2
     exit 1
 fi
 
 # Traversal is required on the reported vendor base; broader parent access is not.
-grep -Fxq 'allow rodin_daemon sysfs_batteryinfo:dir search;' "$RODIN_VENDOR_POLICY"
-if grep '^[[:space:]]*allow .*sysfs_batteryinfo' "$RODIN_VENDOR_POLICY" \
-    | grep -Fvx 'allow rodin_daemon sysfs_batteryinfo:dir search;'; then
+grep -Fxq 'allow onyx_daemon sysfs_batteryinfo:dir search;' "$ONYX_VENDOR_POLICY"
+if grep '^[[:space:]]*allow .*sysfs_batteryinfo' "$ONYX_VENDOR_POLICY" \
+    | grep -Fvx 'allow onyx_daemon sysfs_batteryinfo:dir search;'; then
     echo "Battery parent access must remain directory-search only" >&2
     exit 1
 fi
-grep -Fxq 'allow rodin_daemon sysfs_battery_supply:dir search;' "$RODIN_VENDOR_POLICY"
-grep -Fxq 'allow rodin_daemon sysfs_usb_supply:dir search;' "$RODIN_VENDOR_POLICY"
+grep -Fxq 'allow onyx_daemon sysfs_battery_supply:dir search;' "$ONYX_VENDOR_POLICY"
+grep -Fxq 'allow onyx_daemon sysfs_usb_supply:dir search;' "$ONYX_VENDOR_POLICY"
 
 # Installed-app discovery now needs lookup, not package mutation privileges.
-grep -Fxq 'allow rodin_daemon package_service:service_manager find;' "$RODIN_PRODUCT_PRIVATE/rodin_daemon.te"
-grep -Fxq 'read_logd(rodin_daemon)' "$RODIN_PRODUCT_PRIVATE/rodin_daemon.te"
-if grep 'package_service' "$RODIN_PRODUCT_PRIVATE/rodin_daemon.te" | grep -Fvx 'allow rodin_daemon package_service:service_manager find;'; then
+grep -Fxq 'allow onyx_daemon package_service:service_manager find;' "$ONYX_PRODUCT_PRIVATE/onyx_daemon.te"
+grep -Fxq 'read_logd(onyx_daemon)' "$ONYX_PRODUCT_PRIVATE/onyx_daemon.te"
+if grep 'package_service' "$ONYX_PRODUCT_PRIVATE/onyx_daemon.te" | grep -Fvx 'allow onyx_daemon package_service:service_manager find;'; then
     echo "Package discovery must use only the scoped service lookup grant" >&2
     exit 1
 fi
 
-grep -Fq 'type sysfs_rodin_mali_devfreq, fs_type, sysfs_type;' "$RODIN_VENDOR_POLICY"
-grep -Fq 'type sysfs_rodin_touch, fs_type, sysfs_type;' "$RODIN_VENDOR_POLICY"
-grep -Fq 'allow rodin_daemon sysfs_battery_supply:file rw_file_perms;' "$RODIN_VENDOR_POLICY"
-grep -Fq 'netlink_kobject_uevent_socket' "$RODIN_PRODUCT_PRIVATE/rodin_daemon.te"
-grep -Fq 'allow rodin_daemon vendor_sysfs_displayfeature:file r_file_perms;' "$RODIN_VENDOR_POLICY"
-grep -Fq 'allow rodin_daemon input_device:chr_file rw_file_perms;' "$RODIN_VENDOR_POLICY"
-grep -Fq 'binder_call(rodin_daemon, hal_touchfeature_xiaomi_default)' "$RODIN_VENDOR_POLICY"
-grep -Fq 'binder_call(rodin_daemon, vendor_hal_displayfeature_xiaomi_default)' \
-    "$RODIN_VENDOR_POLICY"
-grep -Fq 'allow rodin_daemon hal_touchfeature_xiaomi_service:service_manager find;' \
-    "$RODIN_VENDOR_POLICY"
-grep -Fq 'allow rodin_daemon hal_touchfeature_xiaomi_default:process ptrace;' "$RODIN_VENDOR_POLICY"
-grep -Fq 'allow rodin_daemon hal_touchfeature_xiaomi_default:dir search;' "$RODIN_VENDOR_POLICY"
-grep -Fq 'typeattribute rodin_daemon rodin_native_touch_access;' "$RODIN_PRODUCT_PRIVATE/rodin_daemon.te"
-grep -Fq '/devices/platform/soc/13000000.mali/devfreq/13000000.mali' "$RODIN_GENFS"
-grep -Fq '/devices/platform/goodix_ts.0' "$RODIN_GENFS"
+grep -Fq 'type sysfs_onyx_mali_devfreq, fs_type, sysfs_type;' "$ONYX_VENDOR_POLICY"
+grep -Fq 'type sysfs_onyx_touch, fs_type, sysfs_type;' "$ONYX_VENDOR_POLICY"
+grep -Fq 'allow onyx_daemon sysfs_battery_supply:file rw_file_perms;' "$ONYX_VENDOR_POLICY"
+grep -Fq 'netlink_kobject_uevent_socket' "$ONYX_PRODUCT_PRIVATE/onyx_daemon.te"
+grep -Fq 'allow onyx_daemon vendor_sysfs_displayfeature:file r_file_perms;' "$ONYX_VENDOR_POLICY"
+grep -Fq 'allow onyx_daemon input_device:chr_file rw_file_perms;' "$ONYX_VENDOR_POLICY"
+grep -Fq 'binder_call(onyx_daemon, hal_touchfeature_xiaomi_default)' "$ONYX_VENDOR_POLICY"
+grep -Fq 'binder_call(onyx_daemon, vendor_hal_displayfeature_xiaomi_default)' \
+    "$ONYX_VENDOR_POLICY"
+grep -Fq 'allow onyx_daemon hal_touchfeature_xiaomi_service:service_manager find;' \
+    "$ONYX_VENDOR_POLICY"
+grep -Fq 'allow onyx_daemon hal_touchfeature_xiaomi_default:process ptrace;' "$ONYX_VENDOR_POLICY"
+grep -Fq 'allow onyx_daemon hal_touchfeature_xiaomi_default:dir search;' "$ONYX_VENDOR_POLICY"
+grep -Fq 'typeattribute onyx_daemon onyx_native_touch_access;' "$ONYX_PRODUCT_PRIVATE/onyx_daemon.te"
+grep -Fq '/devices/platform/soc/13000000.mali/devfreq/13000000.mali' "$ONYX_GENFS"
+grep -Fq '/devices/platform/goodix_ts.0' "$ONYX_GENFS"
 
-grep -Fq 'user root' "$RODIN_AOSP/rodin_daemon.rc"
-grep -Fq 'setenv RODIN_STATE_DIR /data/system/rodin-essential' "$RODIN_AOSP/rodin_daemon.rc"
-grep -Fq 'setenv RODIN_TOUCH_DIRECT_INPUT 1' "$RODIN_AOSP/rodin_daemon.rc"
-grep -Eq '^[[:space:]]*group.*input' "$RODIN_AOSP/rodin_daemon.rc"
+grep -Fq 'user root' "$ONYX_AOSP/onyx_daemon.rc"
+grep -Fq 'setenv ONYX_STATE_DIR /data/system/onyx-essential' "$ONYX_AOSP/onyx_daemon.rc"
+grep -Fq 'setenv ONYX_TOUCH_DIRECT_INPUT 1' "$ONYX_AOSP/onyx_daemon.rc"
+grep -Eq '^[[:space:]]*group.*input' "$ONYX_AOSP/onyx_daemon.rc"
 grep -Fq 'capabilities DAC_OVERRIDE SYS_ADMIN SYS_NICE SYS_PTRACE' \
-    "$RODIN_AOSP/rodin_daemon.rc"
+    "$ONYX_AOSP/onyx_daemon.rc"
 if grep -Eq 'DAC_READ_SEARCH|readproc' \
-    "$RODIN_AOSP/rodin_daemon.rc" "$RODIN_PRODUCT_PRIVATE/rodin_daemon.te"; then
+    "$ONYX_AOSP/onyx_daemon.rc" "$ONYX_PRODUCT_PRIVATE/onyx_daemon.te"; then
     echo "AOSP daemon requests an unreviewed capability or process group" >&2
     exit 1
 fi
-grep -Fq 'mod touch_resampler;' "$RODIN_PROJECT_ROOT/runtime/daemon-rust/src/lib.rs"
-grep -Fq 'RODIN_TOUCH_DIRECT_INPUT' \
-    "$RODIN_PROJECT_ROOT/runtime/daemon-rust/src/touch_resampler.rs"
-grep -Fq 'on property:sys.boot_completed=1' "$RODIN_AOSP/rodin_daemon.rc"
+grep -Fq 'mod touch_resampler;' "$ONYX_PROJECT_ROOT/runtime/daemon-rust/src/lib.rs"
+grep -Fq 'ONYX_TOUCH_DIRECT_INPUT' \
+    "$ONYX_PROJECT_ROOT/runtime/daemon-rust/src/touch_resampler.rs"
+grep -Fq 'on property:sys.boot_completed=1' "$ONYX_AOSP/onyx_daemon.rc"
 
-RODIN_PLAT_CIL="${RODIN_PLAT_SEPOLICY_CIL:-}"
-if [ -n "$RODIN_PLAT_CIL" ]; then
-    [ -f "$RODIN_PLAT_CIL" ] || {
-        echo "RODIN_PLAT_SEPOLICY_CIL does not exist: $RODIN_PLAT_CIL" >&2
+ONYX_PLAT_CIL="${ONYX_PLAT_SEPOLICY_CIL:-}"
+if [ -n "$ONYX_PLAT_CIL" ]; then
+    [ -f "$ONYX_PLAT_CIL" ] || {
+        echo "ONYX_PLAT_SEPOLICY_CIL does not exist: $ONYX_PLAT_CIL" >&2
         exit 1
     }
     command -v secilc >/dev/null 2>&1 || {
         echo "secilc is required for the requested platform neverallow check" >&2
         exit 1
     }
-    RODIN_CONTRACT_CIL="$RODIN_PROJECT_ROOT/tools/aosp-policy-contract.cil"
-    RODIN_POLICY_TMP="$(mktemp -d)"
-    trap 'rm -rf "$RODIN_POLICY_TMP"' EXIT
+    ONYX_CONTRACT_CIL="$ONYX_PROJECT_ROOT/tools/aosp-policy-contract.cil"
+    ONYX_POLICY_TMP="$(mktemp -d)"
+    trap 'rm -rf "$ONYX_POLICY_TMP"' EXIT
 
     # An incomplete or failing baseline is not a successful policy check.
     # Never disable neverallows or excuse unknown diagnostics as OEM noise.
-    secilc -m -M true -G -c 30 "$RODIN_PLAT_CIL" \
-        -o "$RODIN_POLICY_TMP/baseline-policy" -f /dev/null
+    secilc -m -M true -G -c 30 "$ONYX_PLAT_CIL" \
+        -o "$ONYX_POLICY_TMP/baseline-policy" -f /dev/null
     secilc -m -M true -G -c 30 \
-        "$RODIN_PLAT_CIL" "$RODIN_CONTRACT_CIL" \
-        -o "$RODIN_POLICY_TMP/combined-policy" -f /dev/null
+        "$ONYX_PLAT_CIL" "$ONYX_CONTRACT_CIL" \
+        -o "$ONYX_POLICY_TMP/combined-policy" -f /dev/null
     echo 'AOSP_PLATFORM_NEVERALLOW_TEST=PASS (synthetic probe only)'
 else
-    echo 'AOSP_PLATFORM_NEVERALLOW_TEST=SKIP (set RODIN_PLAT_SEPOLICY_CIL)'
+    echo 'AOSP_PLATFORM_NEVERALLOW_TEST=SKIP (set ONYX_PLAT_SEPOLICY_CIL)'
 fi
 
 echo 'AOSP_INTEGRATION_CONTRACT_TEST=PASS'

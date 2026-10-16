@@ -19,7 +19,7 @@ import 'touch_light.dart';
 import 'hub_headline.dart';
 import 'motion_diagnostics.dart';
 
-import 'backend/rodin_backend.dart';
+import 'backend/onyx_backend.dart';
 import 'backend/per_app_backend.dart';
 import 'backend/bypass_telemetry.dart';
 import 'bypass_threshold_selector.dart';
@@ -38,19 +38,19 @@ part 'subsystem_clocks.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const _RodinLaunchFrame());
+  runApp(const _OnyxLaunchFrame());
 
-  unawaited(RodinThemeController.bootstrap());
+  unawaited(OnyxThemeController.bootstrap());
   WidgetsBinding.instance.addPostFrameCallback((_) {
     // Native startup is already connecting asynchronously. Read that cache
     // before building the dashboard, without delaying the initial white frame.
-    RodinBackend.instance.start();
-    runApp(const RodinEssentialApp());
+    OnyxBackend.instance.start();
+    runApp(const OnyxEssentialApp());
   });
 }
 
-class _RodinLaunchFrame extends StatelessWidget {
-  const _RodinLaunchFrame();
+class _OnyxLaunchFrame extends StatelessWidget {
+  const _OnyxLaunchFrame();
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +58,7 @@ class _RodinLaunchFrame extends StatelessWidget {
   }
 }
 
-enum RodinScreen {
+enum OnyxScreen {
   home,
   hubs,
   support,
@@ -77,76 +77,76 @@ enum RodinScreen {
   subsystemClocks,
 }
 
-extension RodinScreenName on RodinScreen {
+extension OnyxScreenName on OnyxScreen {
   String get title {
     switch (this) {
-      case RodinScreen.home:
+      case OnyxScreen.home:
         return 'Onyx Essential';
-      case RodinScreen.hubs:
+      case OnyxScreen.hubs:
         return 'Control Hubs';
-      case RodinScreen.support:
+      case OnyxScreen.support:
         return 'Community & Support';
-      case RodinScreen.settings:
+      case OnyxScreen.settings:
         return 'Settings';
-      case RodinScreen.charging:
+      case OnyxScreen.charging:
         return 'Charging';
-      case RodinScreen.touchBoost:
+      case OnyxScreen.touchBoost:
         return 'Touch Response';
-      case RodinScreen.displayStudio:
+      case OnyxScreen.displayStudio:
         return 'Display Studio';
-      case RodinScreen.cpuControl:
+      case OnyxScreen.cpuControl:
         return 'CPU Core & Frequency';
-      case RodinScreen.advancedConfiguration:
+      case OnyxScreen.advancedConfiguration:
         return 'Advanced Configuration';
-      case RodinScreen.resolution:
+      case OnyxScreen.resolution:
         return 'Resolution';
-      case RodinScreen.diagnostics:
+      case OnyxScreen.diagnostics:
         return 'Diagnostics';
-      case RodinScreen.zramSwap:
+      case OnyxScreen.zramSwap:
         return 'ZRAM & Swap Manager';
-      case RodinScreen.maliGpu:
+      case OnyxScreen.maliGpu:
         return 'Adreno GPU & KGSL';
-      case RodinScreen.systemColors:
+      case OnyxScreen.systemColors:
         return 'System Colors';
-      case RodinScreen.perAppControls:
+      case OnyxScreen.perAppControls:
         return 'Per-App Controls';
-      case RodinScreen.subsystemClocks:
+      case OnyxScreen.subsystemClocks:
         return 'Memory DVFS & UFS';
     }
   }
 
   bool get isRoot =>
-      this == RodinScreen.home ||
-      this == RodinScreen.hubs ||
-      this == RodinScreen.support ||
-      this == RodinScreen.settings;
+      this == OnyxScreen.home ||
+      this == OnyxScreen.hubs ||
+      this == OnyxScreen.support ||
+      this == OnyxScreen.settings;
 }
 
-enum RodinThemePreference { system, light, dark }
+enum OnyxThemePreference { system, light, dark }
 
-class RodinThemeController {
-  const RodinThemeController._();
+class OnyxThemeController {
+  const OnyxThemeController._();
 
   static final ValueNotifier<ThemeMode> mode = ValueNotifier<ThemeMode>(
     ThemeMode.system,
   );
 
-  static ThemeMode themeMode(RodinThemePreference preference) {
+  static ThemeMode themeMode(OnyxThemePreference preference) {
     return switch (preference) {
-      RodinThemePreference.system => ThemeMode.system,
-      RodinThemePreference.light => ThemeMode.light,
-      RodinThemePreference.dark => ThemeMode.dark,
+      OnyxThemePreference.system => ThemeMode.system,
+      OnyxThemePreference.light => ThemeMode.light,
+      OnyxThemePreference.dark => ThemeMode.dark,
     };
   }
 
-  static RodinThemePreference preferenceFromName(String? name) {
-    return RodinThemePreference.values.firstWhere(
-      (RodinThemePreference value) => value.name == name,
-      orElse: () => RodinThemePreference.system,
+  static OnyxThemePreference preferenceFromName(String? name) {
+    return OnyxThemePreference.values.firstWhere(
+      (OnyxThemePreference value) => value.name == name,
+      orElse: () => OnyxThemePreference.system,
     );
   }
 
-  static void setPreference(RodinThemePreference preference) {
+  static void setPreference(OnyxThemePreference preference) {
     mode.value = themeMode(preference);
   }
 
@@ -154,7 +154,7 @@ class RodinThemeController {
     try {
       final File file = File(
         '${Directory.systemTemp.parent.path}'
-        '/files/rodin-appearance.json',
+        '/files/onyx-appearance.json',
       );
 
       if (!await file.exists()) {
@@ -174,8 +174,8 @@ class RodinThemeController {
   }
 }
 
-class RodinEssentialApp extends StatelessWidget {
-  const RodinEssentialApp({super.key});
+class OnyxEssentialApp extends StatelessWidget {
+  const OnyxEssentialApp({super.key});
 
   static const Color _darkBackground = Color(0xFF000000);
   static const Color _darkSurface = Color(0xFF000000);
@@ -200,12 +200,12 @@ class RodinEssentialApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
-      valueListenable: RodinThemeController.mode,
+      valueListenable: OnyxThemeController.mode,
       builder: (BuildContext context, ThemeMode themeMode, Widget? child) {
         return MaterialApp(
           title: 'Onyx Essential',
           debugShowCheckedModeBanner: false,
-          scrollBehavior: const RodinScrollBehavior(),
+          scrollBehavior: const OnyxScrollBehavior(),
           themeMode: themeMode,
           theme: _theme(
             brightness: Brightness.light,
@@ -231,7 +231,7 @@ class RodinEssentialApp extends StatelessWidget {
             onSurfaceVariant: _darkOnSurfaceVariant,
             outline: _darkOutline,
           ),
-          home: const RodinShell(),
+          home: const OnyxShell(),
         );
       },
     );
@@ -278,45 +278,45 @@ class RodinEssentialApp extends StatelessWidget {
         outline: outline,
       ),
       textTheme: textTheme.apply(bodyColor: onSurface, displayColor: onSurface),
-      sliderTheme: rodinSliderTheme(accent: primary, outline: outline),
+      sliderTheme: onyxSliderTheme(accent: primary, outline: outline),
       dividerTheme: DividerThemeData(
-        color: RodinSurfaceLines.divider(scheme),
+        color: OnyxSurfaceLines.divider(scheme),
         thickness: 0.8,
       ),
     );
   }
 }
 
-class RodinShell extends StatefulWidget {
-  const RodinShell({super.key});
+class OnyxShell extends StatefulWidget {
+  const OnyxShell({super.key});
 
   @override
-  State<RodinShell> createState() => _RodinShellState();
+  State<OnyxShell> createState() => _OnyxShellState();
 }
 
-class _RodinShellState extends State<RodinShell>
+class _OnyxShellState extends State<OnyxShell>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
-  static const List<RodinScreen> _rootOrder = <RodinScreen>[
-    RodinScreen.home,
-    RodinScreen.hubs,
-    RodinScreen.support,
-    RodinScreen.settings,
+  static const List<OnyxScreen> _rootOrder = <OnyxScreen>[
+    OnyxScreen.home,
+    OnyxScreen.hubs,
+    OnyxScreen.support,
+    OnyxScreen.settings,
   ];
 
   final PageController _rootController = PageController(initialPage: 0);
-  final GlobalKey<RodinRootPagerState> _rootPagerKey =
-      GlobalKey<RodinRootPagerState>();
-  final ValueNotifier<RodinAppearanceConfig> _appearance =
-      ValueNotifier<RodinAppearanceConfig>(
-        const RodinAppearanceConfig.defaults(),
+  final GlobalKey<OnyxRootPagerState> _rootPagerKey =
+      GlobalKey<OnyxRootPagerState>();
+  final ValueNotifier<OnyxAppearanceConfig> _appearance =
+      ValueNotifier<OnyxAppearanceConfig>(
+        const OnyxAppearanceConfig.defaults(),
       );
 
-  RodinScreen _screen = RodinScreen.home;
-  RodinScreen _detailBackTarget = RodinScreen.home;
-  RodinScreen? _nestedDetailBackTarget;
+  OnyxScreen _screen = OnyxScreen.home;
+  OnyxScreen _detailBackTarget = OnyxScreen.home;
+  OnyxScreen? _nestedDetailBackTarget;
   bool _rootSwipeLocked = false;
   bool _rootNavAnimating = false;
-  RodinScreen? _rootNavTarget;
+  OnyxScreen? _rootNavTarget;
   int _rootNavRevision = 0;
   int _bypassFocusRevision = 0;
   late final VoidCallback _interactionRevisionListener;
@@ -325,15 +325,15 @@ class _RodinShellState extends State<RodinShell>
 
   File get _appearanceFile {
     final Directory parent = Directory.systemTemp.parent;
-    return File('${parent.path}/files/rodin-appearance.json');
+    return File('${parent.path}/files/onyx-appearance.json');
   }
 
-  int _rootIndex(RodinScreen screen) {
+  int _rootIndex(OnyxScreen screen) {
     final int index = _rootOrder.indexOf(screen);
     return index < 0 ? 0 : index;
   }
 
-  RodinScreen _visualRoot() {
+  OnyxScreen _visualRoot() {
     return _screen.isRoot ? _screen : _detailBackTarget;
   }
 
@@ -343,8 +343,7 @@ class _RodinShellState extends State<RodinShell>
     WidgetsBinding.instance.addObserver(this);
     _backSettle = AnimationController.unbounded(vsync: this, value: 0)
       ..addListener(
-        () =>
-            RodinBackMotion.progress.value = _backSettle.value.clamp(0.0, 1.0),
+        () => OnyxBackMotion.progress.value = _backSettle.value.clamp(0.0, 1.0),
       );
 
     _interactionRevisionListener = () {
@@ -355,11 +354,11 @@ class _RodinShellState extends State<RodinShell>
       setState(() {});
     };
 
-    RodinInteractionSettings.revision.addListener(_interactionRevisionListener);
+    OnyxInteractionSettings.revision.addListener(_interactionRevisionListener);
 
-    RodinInteractionSettings.load();
-    RodinBackend.instance.setBackIntercept(false);
-    RodinBackend.instance.listenBackGesture(_handleBackGesture);
+    OnyxInteractionSettings.load();
+    OnyxBackend.instance.setBackIntercept(false);
+    OnyxBackend.instance.listenBackGesture(_handleBackGesture);
     _startBackPolling();
 
     _loadAppearance();
@@ -369,11 +368,11 @@ class _RodinShellState extends State<RodinShell>
     _nativeBackPoll?.cancel();
     _nativeBackPoll = Timer.periodic(const Duration(milliseconds: 16), (_) {
       if (!mounted) return;
-      final backend = RodinBackend.instance;
+      final backend = OnyxBackend.instance;
       if (backend.consumeBypassSettingsRequest()) {
         _backSettle.stop();
         _backSettle.value = 0;
-        _openDetail(RodinScreen.charging);
+        _openDetail(OnyxScreen.charging);
         setState(() => _bypassFocusRevision++);
         return;
       }
@@ -381,8 +380,8 @@ class _RodinShellState extends State<RodinShell>
       final requested = backend.consumeBackRequest();
       if (packet != 0) {
         _handleBackGesture(packet);
-      } else if (requested && _screen != RodinScreen.home) {
-        RodinBackMotion.committedProgress = 0;
+      } else if (requested && _screen != OnyxScreen.home) {
+        OnyxBackMotion.committedProgress = 0;
         _back();
       }
     });
@@ -392,21 +391,21 @@ class _RodinShellState extends State<RodinShell>
     if (!mounted) return;
     final phase = packet >> 16;
     if (phase == 1 || phase == 2) {
-      if (phase == 1) RodinMotionDiagnostics.begin((packet & 32768) != 0);
+      if (phase == 1) OnyxMotionDiagnostics.begin((packet & 32768) != 0);
       _backSettle.stop();
-      RodinBackMotion.committedProgress = 0;
-      RodinBackMotion.nested = RodinNestedBackController.canPreview;
-      RodinBackMotion.rightEdge = (packet & 32768) != 0;
+      OnyxBackMotion.committedProgress = 0;
+      OnyxBackMotion.nested = OnyxNestedBackController.canPreview;
+      OnyxBackMotion.rightEdge = (packet & 32768) != 0;
       if (!Navigator.of(context).canPop())
         _backSettle.value = (packet & 32767) / 10000.0;
     } else if (phase == 3) {
-      RodinMotionDiagnostics.end();
-      _backSettle.animateWith(RodinMotion.cancelBack(_backSettle.value));
-    } else if (phase == 4 && _screen != RodinScreen.home) {
-      RodinMotionDiagnostics.end();
+      OnyxMotionDiagnostics.end();
+      _backSettle.animateWith(OnyxMotion.cancelBack(_backSettle.value));
+    } else if (phase == 4 && _screen != OnyxScreen.home) {
+      OnyxMotionDiagnostics.end();
       _backSettle.stop();
-      RodinBackMotion.rightEdge = (packet & 32768) != 0;
-      RodinBackMotion.committedProgress = _backSettle.value.clamp(0.0, 1.0);
+      OnyxBackMotion.rightEdge = (packet & 32768) != 0;
+      OnyxBackMotion.committedProgress = _backSettle.value.clamp(0.0, 1.0);
       _back();
       _backSettle.value = 0;
     }
@@ -422,7 +421,7 @@ class _RodinShellState extends State<RodinShell>
       // An interrupted edge gesture must not keep a frozen page on resume.
       _backSettle.stop();
       _backSettle.value = 0;
-      RodinBackMotion.committedProgress = 0;
+      OnyxBackMotion.committedProgress = 0;
     }
   }
 
@@ -435,7 +434,7 @@ class _RodinShellState extends State<RodinShell>
 
       final String raw = await file.readAsString();
       final Object? decoded = jsonDecode(raw);
-      final RodinAppearanceConfig config = RodinAppearanceConfig.fromJson(
+      final OnyxAppearanceConfig config = OnyxAppearanceConfig.fromJson(
         decoded,
       );
 
@@ -444,7 +443,7 @@ class _RodinShellState extends State<RodinShell>
       }
 
       _appearance.value = config;
-      RodinThemeController.setPreference(config.themePreference);
+      OnyxThemeController.setPreference(config.themePreference);
     } catch (_) {
       // Appearance must never block app boot.
     }
@@ -463,8 +462,8 @@ class _RodinShellState extends State<RodinShell>
     }
   }
 
-  void _setThemePreference(RodinThemePreference preference) {
-    RodinThemeController.setPreference(preference);
+  void _setThemePreference(OnyxThemePreference preference) {
+    OnyxThemeController.setPreference(preference);
 
     _appearance.value = _appearance.value.copyWith(themePreference: preference);
 
@@ -498,14 +497,14 @@ class _RodinShellState extends State<RodinShell>
 
   void _setCustomBackgroundPath(String path) {
     _appearance.value = _appearance.value.copyWith(
-      backgroundStyle: RodinBackgroundStyle.custom,
+      backgroundStyle: OnyxBackgroundStyle.custom,
       customPath: path,
     );
 
     _persistAppearance();
   }
 
-  void _setBackgroundStyle(RodinBackgroundStyle style) {
+  void _setBackgroundStyle(OnyxBackgroundStyle style) {
     _appearance.value = _appearance.value.copyWith(backgroundStyle: style);
     _persistAppearance();
   }
@@ -522,9 +521,9 @@ class _RodinShellState extends State<RodinShell>
   }
 
   void _resetAppearance() {
-    const RodinAppearanceConfig defaults = RodinAppearanceConfig.defaults();
+    const OnyxAppearanceConfig defaults = OnyxAppearanceConfig.defaults();
 
-    RodinThemeController.setPreference(defaults.themePreference);
+    OnyxThemeController.setPreference(defaults.themePreference);
 
     _appearance.value = defaults;
     _persistAppearance();
@@ -538,10 +537,10 @@ class _RodinShellState extends State<RodinShell>
   }
 
   void _syncNativeBackInterception() {
-    RodinBackend.instance.setBackIntercept(_screen != RodinScreen.home);
+    OnyxBackend.instance.setBackIntercept(_screen != OnyxScreen.home);
   }
 
-  void _selectRoot(RodinScreen screen) {
+  void _selectRoot(OnyxScreen screen) {
     if (!screen.isRoot) {
       return;
     }
@@ -549,8 +548,8 @@ class _RodinShellState extends State<RodinShell>
     final int target = _rootIndex(screen);
     final revision = ++_rootNavRevision;
     _rootPagerKey.currentState?.prepareJump(target);
-    RodinMotionDiagnostics.begin(false, label: 'tab-${screen.name}');
-    RodinMotionDiagnostics.end();
+    OnyxMotionDiagnostics.begin(false, label: 'tab-${screen.name}');
+    OnyxMotionDiagnostics.end();
 
     setState(() {
       _screen = screen;
@@ -570,7 +569,7 @@ class _RodinShellState extends State<RodinShell>
         _rootController
             .animateToPage(
               target,
-              duration: RodinInteractionSettings.motionDuration(260),
+              duration: OnyxInteractionSettings.motionDuration(260),
               curve: Curves.easeOutCubic,
             )
             .whenComplete(() {
@@ -618,7 +617,7 @@ class _RodinShellState extends State<RodinShell>
       return;
     }
 
-    final RodinScreen next = _rootOrder[index];
+    final OnyxScreen next = _rootOrder[index];
 
     if (_rootNavAnimating && _rootNavTarget != null && next != _rootNavTarget) {
       return;
@@ -637,15 +636,15 @@ class _RodinShellState extends State<RodinShell>
     _syncNativeBackInterception();
   }
 
-  void _openDetail(RodinScreen screen) {
+  void _openDetail(OnyxScreen screen) {
     if (screen.isRoot) {
       _selectRoot(screen);
       return;
     }
 
-    RodinBackMotion.committedProgress = 0;
-    RodinMotionDiagnostics.begin(false, label: 'open-${screen.name}');
-    RodinMotionDiagnostics.end();
+    OnyxBackMotion.committedProgress = 0;
+    OnyxMotionDiagnostics.begin(false, label: 'open-${screen.name}');
+    OnyxMotionDiagnostics.end();
 
     setState(() {
       if (_screen.isRoot) {
@@ -659,13 +658,13 @@ class _RodinShellState extends State<RodinShell>
   }
 
   // ignore: unused_element
-  void _openNestedDetail(RodinScreen screen) {
+  void _openNestedDetail(OnyxScreen screen) {
     if (screen.isRoot || _screen.isRoot) {
       _openDetail(screen);
       return;
     }
 
-    final RodinScreen parent = _screen;
+    final OnyxScreen parent = _screen;
 
     setState(() {
       _nestedDetailBackTarget = parent;
@@ -682,11 +681,11 @@ class _RodinShellState extends State<RodinShell>
       navigator.pop();
       return;
     }
-    if (RodinNestedBackController.handleBack()) {
+    if (OnyxNestedBackController.handleBack()) {
       return;
     }
 
-    final RodinScreen? nestedTarget = _nestedDetailBackTarget;
+    final OnyxScreen? nestedTarget = _nestedDetailBackTarget;
 
     if (nestedTarget != null && !_screen.isRoot) {
       setState(() {
@@ -699,13 +698,13 @@ class _RodinShellState extends State<RodinShell>
     }
 
     if (_screen.isRoot) {
-      if (_screen != RodinScreen.home) {
-        _selectRoot(RodinScreen.home);
+      if (_screen != OnyxScreen.home) {
+        _selectRoot(OnyxScreen.home);
       }
       return;
     }
 
-    final RodinScreen target = _detailBackTarget;
+    final OnyxScreen target = _detailBackTarget;
 
     if (_rootController.hasClients) {
       _rootController.jumpToPage(_rootIndex(target));
@@ -722,40 +721,40 @@ class _RodinShellState extends State<RodinShell>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    RodinBackend.instance.setBackIntercept(false);
-    RodinBackend.instance.stopBackGesture();
+    OnyxBackend.instance.setBackIntercept(false);
+    OnyxBackend.instance.stopBackGesture();
     _nativeBackPoll?.cancel();
     _nativeBackPoll = null;
     _backSettle.dispose();
-    RodinBackMotion.progress.value = 0;
+    OnyxBackMotion.progress.value = 0;
     _rootController.dispose();
     _appearance.dispose();
-    RodinInteractionSettings.revision.removeListener(
+    OnyxInteractionSettings.revision.removeListener(
       _interactionRevisionListener,
     );
 
     super.dispose();
   }
 
-  Widget _rootPage(RodinScreen screen) {
+  Widget _rootPage(OnyxScreen screen) {
     switch (screen) {
-      case RodinScreen.home:
+      case OnyxScreen.home:
         return HomeScreen(
           onOpen: _openDetail,
-          onHubs: () => _selectRoot(RodinScreen.hubs),
-          onSupport: () => _selectRoot(RodinScreen.support),
+          onHubs: () => _selectRoot(OnyxScreen.hubs),
+          onSupport: () => _selectRoot(OnyxScreen.support),
         );
-      case RodinScreen.hubs:
+      case OnyxScreen.hubs:
         return HubsScreen(onOpen: _openDetail);
-      case RodinScreen.support:
+      case OnyxScreen.support:
         return const SupportScreen();
-      case RodinScreen.settings:
-        return ValueListenableBuilder<RodinAppearanceConfig>(
+      case OnyxScreen.settings:
+        return ValueListenableBuilder<OnyxAppearanceConfig>(
           valueListenable: _appearance,
           builder:
               (
                 BuildContext context,
-                RodinAppearanceConfig config,
+                OnyxAppearanceConfig config,
                 Widget? child,
               ) {
                 return SettingsScreen(
@@ -784,14 +783,13 @@ class _RodinShellState extends State<RodinShell>
   // Appearance/telemetry still update through their inherited scopes/streams.
   late final List<Widget> _rootPages = _rootOrder
       .map(
-        (RodinScreen screen) => RepaintBoundary(
+        (OnyxScreen screen) => RepaintBoundary(
           child: Stack(
             fit: StackFit.expand,
             children: <Widget>[
-              ValueListenableBuilder<RodinAppearanceConfig>(
+              ValueListenableBuilder<OnyxAppearanceConfig>(
                 valueListenable: _appearance,
-                builder: (_, config, _) =>
-                    _RodinBackgroundLayer(config: config),
+                builder: (_, config, _) => _OnyxBackgroundLayer(config: config),
               ),
               _rootPage(screen),
             ],
@@ -801,10 +799,10 @@ class _RodinShellState extends State<RodinShell>
       .toList(growable: false);
 
   Widget _rootPager() {
-    return RodinRootPager(
+    return OnyxRootPager(
       key: _rootPagerKey,
       controller: _rootController,
-      physics: const PageScrollPhysics(parent: RodinScrollPhysics()),
+      physics: const PageScrollPhysics(parent: OnyxScrollPhysics()),
       swipeEnabled: !_rootSwipeLocked,
       onDragStart: _interruptRootTap,
       onPageChanged: _onRootPageChanged,
@@ -812,34 +810,34 @@ class _RodinShellState extends State<RodinShell>
     );
   }
 
-  Widget _detailBody(RodinScreen screen) {
+  Widget _detailBody(OnyxScreen screen) {
     switch (screen) {
-      case RodinScreen.charging:
+      case OnyxScreen.charging:
         return ChargingScreen(
           onBack: _back,
           focusRequest: _bypassFocusRevision,
         );
-      case RodinScreen.touchBoost:
+      case OnyxScreen.touchBoost:
         return TouchBoostScreen(onBack: _back);
-      case RodinScreen.displayStudio:
+      case OnyxScreen.displayStudio:
         return DisplayStudioScreen(onBack: _back);
-      case RodinScreen.cpuControl:
+      case OnyxScreen.cpuControl:
         return CpuControlScreen(onBack: _back);
-      case RodinScreen.advancedConfiguration:
+      case OnyxScreen.advancedConfiguration:
         return AdvancedConfigurationScreen(onBack: _back);
-      case RodinScreen.resolution:
+      case OnyxScreen.resolution:
         return ResolutionScreen(onBack: _back);
-      case RodinScreen.diagnostics:
+      case OnyxScreen.diagnostics:
         return DiagnosticsScreen(onBack: _back);
-      case RodinScreen.zramSwap:
+      case OnyxScreen.zramSwap:
         return ZramSwapScreen(onBack: _back);
-      case RodinScreen.maliGpu:
+      case OnyxScreen.maliGpu:
         return MaliGpuScreen(onBack: _back);
-      case RodinScreen.systemColors:
+      case OnyxScreen.systemColors:
         return SystemColorsScreen(onBack: _back);
-      case RodinScreen.perAppControls:
+      case OnyxScreen.perAppControls:
         return PerAppControlsScreen(onBack: _back);
-      case RodinScreen.subsystemClocks:
+      case OnyxScreen.subsystemClocks:
         return SubsystemClocksScreen(onBack: _back);
       default:
         return _rootPager();
@@ -848,20 +846,20 @@ class _RodinShellState extends State<RodinShell>
 
   @override
   Widget build(BuildContext context) {
-    final RodinScreen current = _screen;
-    final RodinScreen navRoot = _visualRoot();
+    final OnyxScreen current = _screen;
+    final OnyxScreen navRoot = _visualRoot();
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return ValueListenableBuilder<RodinAppearanceConfig>(
+    return ValueListenableBuilder<OnyxAppearanceConfig>(
       valueListenable: _appearance,
       builder:
-          (BuildContext context, RodinAppearanceConfig config, Widget? child) {
-            return RodinAppearanceScope(
+          (BuildContext context, OnyxAppearanceConfig config, Widget? child) {
+            return OnyxAppearanceScope(
               config: config,
               child: PopScope(
-                canPop: current == RodinScreen.home,
+                canPop: current == OnyxScreen.home,
                 onPopInvokedWithResult: (bool didPop, Object? result) {
-                  if (!didPop && current != RodinScreen.home) {
+                  if (!didPop && current != OnyxScreen.home) {
                     _back();
                   }
                 },
@@ -871,7 +869,7 @@ class _RodinShellState extends State<RodinShell>
                   body: Stack(
                     fit: StackFit.expand,
                     children: <Widget>[
-                      _RodinBackgroundLayer(config: config),
+                      _OnyxBackgroundLayer(config: config),
                       SafeArea(
                         bottom: false,
                         child: Stack(
@@ -887,15 +885,11 @@ class _RodinShellState extends State<RodinShell>
                             AnimatedSwitcher(
                               duration: MediaQuery.disableAnimationsOf(context)
                                   ? Duration.zero
-                                  : RodinInteractionSettings.motionDuration(
-                                      320,
-                                    ),
+                                  : OnyxInteractionSettings.motionDuration(320),
                               reverseDuration:
                                   MediaQuery.disableAnimationsOf(context)
                                   ? Duration.zero
-                                  : RodinInteractionSettings.motionDuration(
-                                      220,
-                                    ),
+                                  : OnyxInteractionSettings.motionDuration(220),
                               switchInCurve: Curves.linear,
                               switchOutCurve: Curves.linear,
                               transitionBuilder:
@@ -906,14 +900,14 @@ class _RodinShellState extends State<RodinShell>
                                         )) {
                                       return child;
                                     }
-                                    return RodinDetailTransition(
+                                    return OnyxDetailTransition(
                                       animation: animation,
                                       previewThrough: true,
                                       forward: !current.isRoot,
                                       active:
                                           child.key ==
-                                          ValueKey<RodinScreen>(current),
-                                      child: RodinPredictivePlane(child: child),
+                                          ValueKey<OnyxScreen>(current),
+                                      child: OnyxPredictivePlane(child: child),
                                     );
                                   },
                               child: current.isRoot
@@ -923,7 +917,7 @@ class _RodinShellState extends State<RodinShell>
                                       ),
                                     )
                                   : Container(
-                                      key: ValueKey<RodinScreen>(current),
+                                      key: ValueKey<OnyxScreen>(current),
                                       decoration: BoxDecoration(
                                         color: isDark
                                             ? const Color(0xFF090C11)
@@ -941,7 +935,7 @@ class _RodinShellState extends State<RodinShell>
                                       child: Stack(
                                         fit: StackFit.expand,
                                         children: <Widget>[
-                                          _RodinBackgroundLayer(config: config),
+                                          _OnyxBackgroundLayer(config: config),
                                           _detailBody(current),
                                         ],
                                       ),
@@ -976,9 +970,9 @@ class _RodinShellState extends State<RodinShell>
                       ),
                       Padding(
                         padding: const EdgeInsets.only(
-                          top: RodinBottomLayout.dockFade,
+                          top: OnyxBottomLayout.dockFade,
                         ),
-                        child: RodinBottomBar(
+                        child: OnyxBottomBar(
                           controller: _rootController,
                           currentRoot: navRoot,
                           onSelect: _selectRoot,
@@ -995,10 +989,10 @@ class _RodinShellState extends State<RodinShell>
   }
 }
 
-enum RodinBackgroundStyle { system, midnight, aurora, custom }
+enum OnyxBackgroundStyle { system, midnight, aurora, custom }
 
-class RodinAppearanceConfig {
-  const RodinAppearanceConfig({
+class OnyxAppearanceConfig {
+  const OnyxAppearanceConfig({
     required this.themePreference,
     required this.backgroundStyle,
     required this.backgroundBlur,
@@ -1010,9 +1004,9 @@ class RodinAppearanceConfig {
     this.coreVisualizerStyle = 0,
   });
 
-  const RodinAppearanceConfig.defaults()
-    : themePreference = RodinThemePreference.system,
-      backgroundStyle = RodinBackgroundStyle.system,
+  const OnyxAppearanceConfig.defaults()
+    : themePreference = OnyxThemePreference.system,
+      backgroundStyle = OnyxBackgroundStyle.system,
       backgroundBlur = 0,
       customPath = '',
       accentIndex = 0,
@@ -1021,8 +1015,8 @@ class RodinAppearanceConfig {
       heroGlow = true,
       coreVisualizerStyle = 0;
 
-  final RodinThemePreference themePreference;
-  final RodinBackgroundStyle backgroundStyle;
+  final OnyxThemePreference themePreference;
+  final OnyxBackgroundStyle backgroundStyle;
   final double backgroundBlur;
   final String customPath;
   final int accentIndex;
@@ -1053,9 +1047,9 @@ class RodinAppearanceConfig {
 
   Color get activeAccent => accents[accentIndex.clamp(0, accents.length - 1)];
 
-  RodinAppearanceConfig copyWith({
-    RodinThemePreference? themePreference,
-    RodinBackgroundStyle? backgroundStyle,
+  OnyxAppearanceConfig copyWith({
+    OnyxThemePreference? themePreference,
+    OnyxBackgroundStyle? backgroundStyle,
     double? backgroundBlur,
     String? customPath,
     int? accentIndex,
@@ -1064,7 +1058,7 @@ class RodinAppearanceConfig {
     bool? heroGlow,
     int? coreVisualizerStyle,
   }) {
-    return RodinAppearanceConfig(
+    return OnyxAppearanceConfig(
       themePreference: themePreference ?? this.themePreference,
       backgroundStyle: backgroundStyle ?? this.backgroundStyle,
       backgroundBlur: backgroundBlur ?? this.backgroundBlur,
@@ -1091,19 +1085,19 @@ class RodinAppearanceConfig {
     };
   }
 
-  static RodinAppearanceConfig fromJson(Object? raw) {
+  static OnyxAppearanceConfig fromJson(Object? raw) {
     if (raw is! Map<String, dynamic>) {
-      return const RodinAppearanceConfig.defaults();
+      return const OnyxAppearanceConfig.defaults();
     }
 
-    final RodinThemePreference themePreference =
-        RodinThemeController.preferenceFromName(raw['themeMode']?.toString());
+    final OnyxThemePreference themePreference =
+        OnyxThemeController.preferenceFromName(raw['themeMode']?.toString());
 
     final String styleName = raw['backgroundStyle']?.toString() ?? 'system';
 
-    final RodinBackgroundStyle style = RodinBackgroundStyle.values.firstWhere(
-      (RodinBackgroundStyle value) => value.name == styleName,
-      orElse: () => RodinBackgroundStyle.system,
+    final OnyxBackgroundStyle style = OnyxBackgroundStyle.values.firstWhere(
+      (OnyxBackgroundStyle value) => value.name == styleName,
+      orElse: () => OnyxBackgroundStyle.system,
     );
 
     final num? blurRaw = raw['backgroundBlur'] as num?;
@@ -1116,7 +1110,7 @@ class RodinAppearanceConfig {
     final int coreVisualizerStyle =
         (raw['coreVisualizerStyle'] as num?)?.toInt() ?? 0;
 
-    return RodinAppearanceConfig(
+    return OnyxAppearanceConfig(
       themePreference: themePreference,
       backgroundStyle: style,
       backgroundBlur: blur,
@@ -1130,31 +1124,31 @@ class RodinAppearanceConfig {
   }
 }
 
-class RodinAppearanceScope extends InheritedWidget {
-  const RodinAppearanceScope({
+class OnyxAppearanceScope extends InheritedWidget {
+  const OnyxAppearanceScope({
     required this.config,
     required super.child,
     super.key,
   });
 
-  final RodinAppearanceConfig config;
+  final OnyxAppearanceConfig config;
 
-  static RodinAppearanceConfig of(BuildContext context) {
-    final RodinAppearanceScope? scope = context
-        .dependOnInheritedWidgetOfExactType<RodinAppearanceScope>();
-    return scope?.config ?? const RodinAppearanceConfig.defaults();
+  static OnyxAppearanceConfig of(BuildContext context) {
+    final OnyxAppearanceScope? scope = context
+        .dependOnInheritedWidgetOfExactType<OnyxAppearanceScope>();
+    return scope?.config ?? const OnyxAppearanceConfig.defaults();
   }
 
   @override
-  bool updateShouldNotify(RodinAppearanceScope oldWidget) {
+  bool updateShouldNotify(OnyxAppearanceScope oldWidget) {
     return config != oldWidget.config;
   }
 }
 
-class _RodinBackgroundLayer extends StatelessWidget {
-  const _RodinBackgroundLayer({required this.config});
+class _OnyxBackgroundLayer extends StatelessWidget {
+  const _OnyxBackgroundLayer({required this.config});
 
-  final RodinAppearanceConfig config;
+  final OnyxAppearanceConfig config;
 
   Widget _midnight(BuildContext context) {
     final bool dark = Theme.of(context).brightness == Brightness.dark;
@@ -1331,7 +1325,7 @@ class _RodinBackgroundLayer extends StatelessWidget {
     }
 
     return Image.file(
-      key: ValueKey<String>('rodin-custom-${config.customPath}'),
+      key: ValueKey<String>('onyx-custom-${config.customPath}'),
       File(config.customPath),
       fit: BoxFit.cover,
       filterQuality: FilterQuality.medium,
@@ -1352,12 +1346,12 @@ class _RodinBackgroundLayer extends StatelessWidget {
     Widget visual = dark
         ? const ColoredBox(color: Color(0xFF000000))
         : switch (config.backgroundStyle) {
-            RodinBackgroundStyle.system => ColoredBox(
+            OnyxBackgroundStyle.system => ColoredBox(
               color: theme.scaffoldBackgroundColor,
             ),
-            RodinBackgroundStyle.midnight => _midnight(context),
-            RodinBackgroundStyle.aurora => _aurora(context),
-            RodinBackgroundStyle.custom => _custom(context),
+            OnyxBackgroundStyle.midnight => _midnight(context),
+            OnyxBackgroundStyle.aurora => _aurora(context),
+            OnyxBackgroundStyle.custom => _custom(context),
           };
 
     if (!dark && config.backgroundBlur > 0.05) {
@@ -1374,7 +1368,7 @@ class _RodinBackgroundLayer extends StatelessWidget {
     }
 
     final bool decorated =
-        !dark && config.backgroundStyle != RodinBackgroundStyle.system;
+        !dark && config.backgroundStyle != OnyxBackgroundStyle.system;
 
     return Stack(
       fit: StackFit.expand,
@@ -1420,26 +1414,26 @@ class _ServiceSettingsCardState extends State<_ServiceSettingsCard> {
   bool _pending = false;
   bool _reset = false;
   String? _message;
-  StreamSubscription<RodinBackendSnapshot>? _subscription;
+  StreamSubscription<OnyxBackendSnapshot>? _subscription;
 
   @override
   void initState() {
     super.initState();
-    _subscription = RodinBackend.instance.snapshots.listen((_) {
+    _subscription = OnyxBackend.instance.snapshots.listen((_) {
       if (!mounted) return;
-      final int state = RodinBackend.instance.serviceActionState;
+      final int state = OnyxBackend.instance.serviceActionState;
       if (_pending && state != 1 && state != 0) {
         if (state == 2 && _reset) {
           widget.onResetAppearance();
-          RodinInteractionSettings.resetMotion();
-          RodinInteractionSettings.setHaptics(true);
+          OnyxInteractionSettings.resetMotion();
+          OnyxInteractionSettings.setHaptics(true);
         }
         setState(() {
           _pending = false;
           _message = state == 2
               ? (_reset
                     ? 'All device controls reset.'
-                    : RodinBackend.instance.serviceEnabled
+                    : OnyxBackend.instance.serviceEnabled
                     ? 'Onyx Essential enabled.'
                     : 'Onyx Essential disabled. Your preferences are saved.')
               : 'Some settings could not be restored. Onyx Essential control remains paused. Retry or check backend diagnostics.';
@@ -1450,20 +1444,20 @@ class _ServiceSettingsCardState extends State<_ServiceSettingsCard> {
 
   Future<void> _change({required bool reset, bool enable = false}) async {
     if (_pending) return;
-    RodinHaptics.tap();
+    OnyxHaptics.tap();
     if (reset || !enable) {
-      final RodinAppearanceConfig appearance = RodinAppearanceScope.of(context);
+      final OnyxAppearanceConfig appearance = OnyxAppearanceScope.of(context);
       final bool confirmed =
-          await showRodinDialog<bool>(
+          await showOnyxDialog<bool>(
             context: context,
-            builder: (BuildContext context) => RodinAppearanceScope(
+            builder: (BuildContext context) => OnyxAppearanceScope(
               config: appearance,
-              child: RodinServiceConfirmation(
+              child: OnyxServiceConfirmation(
                 reset: reset,
                 cornerRadius: appearance.cardRadius,
                 accent: appearance.activeAccent,
-                onConfirmHaptic: RodinHaptics.confirm,
-                onCancelHaptic: RodinHaptics.back,
+                onConfirmHaptic: OnyxHaptics.confirm,
+                onCancelHaptic: OnyxHaptics.back,
                 surfaceBuilder: (Widget child) => SurfaceCard(
                   padding: const EdgeInsets.all(22),
                   accent: appearance.activeAccent,
@@ -1475,7 +1469,7 @@ class _ServiceSettingsCardState extends State<_ServiceSettingsCard> {
           false;
       if (!confirmed || !mounted) return;
     }
-    final RodinBackend backend = RodinBackend.instance;
+    final OnyxBackend backend = OnyxBackend.instance;
     final bool accepted = reset
         ? backend.resetAllSettings()
         : backend.setServiceEnabled(enable);
@@ -1497,13 +1491,13 @@ class _ServiceSettingsCardState extends State<_ServiceSettingsCard> {
   @override
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
-    final RodinBackend backend = RodinBackend.instance;
-    return StreamBuilder<RodinBackendSnapshot>(
+    final OnyxBackend backend = OnyxBackend.instance;
+    return StreamBuilder<OnyxBackendSnapshot>(
       stream: backend.snapshots,
       initialData: backend.latest,
       builder:
-          (BuildContext context, AsyncSnapshot<RodinBackendSnapshot> snapshot) {
-            final Color accent = RodinAppearanceScope.of(context).activeAccent;
+          (BuildContext context, AsyncSnapshot<OnyxBackendSnapshot> snapshot) {
+            final Color accent = OnyxAppearanceScope.of(context).activeAccent;
             final bool connected = snapshot.data?.ready ?? false;
             final bool known = backend.extendedValue(116) >= 0;
             final bool enabled = backend.serviceEnabled;
@@ -1652,9 +1646,9 @@ class SettingsScreen extends StatefulWidget {
     super.key,
   });
 
-  final RodinAppearanceConfig config;
-  final ValueChanged<RodinThemePreference> onThemePreferenceChanged;
-  final ValueChanged<RodinBackgroundStyle> onBackgroundStyleChanged;
+  final OnyxAppearanceConfig config;
+  final ValueChanged<OnyxThemePreference> onThemePreferenceChanged;
+  final ValueChanged<OnyxBackgroundStyle> onBackgroundStyleChanged;
   final ValueChanged<String> onCustomBackgroundSelected;
   final ValueChanged<double> onBlurChanged;
   final ValueChanged<double> onBlurChangeEnd;
@@ -1675,7 +1669,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _photoMessage;
 
   Future<int> _ensurePhotoPermission() async {
-    final RodinBackend backend = RodinBackend.instance;
+    final OnyxBackend backend = OnyxBackend.instance;
 
     int state = backend.photoPermissionState();
 
@@ -1718,7 +1712,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final int nonce = DateTime.now().microsecondsSinceEpoch;
 
     return '${Directory.systemTemp.parent.path}'
-        '/files/rodin-custom-background-'
+        '/files/onyx-custom-background-'
         '$nonce$extension';
   }
 
@@ -1759,7 +1753,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (BuildContext context) {
         return FractionallySizedBox(
           heightFactor: 0.91,
-          child: _RodinGalleryBrowser(permissionState: permissionState),
+          child: _OnyxGalleryBrowser(permissionState: permissionState),
         );
       },
     );
@@ -1816,11 +1810,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
-    final RodinAppearanceConfig config = widget.config;
+    final OnyxAppearanceConfig config = widget.config;
 
-    return RodinScrollPage(
+    return OnyxScrollPage(
       children: <Widget>[
-        const RodinHeader(
+        const OnyxHeader(
           title: 'Settings',
           subtitle: 'Service controls, theme, and customization',
           large: false,
@@ -1909,7 +1903,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${RodinAppearanceConfig.accentNames[config.accentIndex]} accent · ${switch (config.cardStyle) {
+                          '${OnyxAppearanceConfig.accentNames[config.accentIndex]} accent · ${switch (config.cardStyle) {
                             1 => 'Frosted Glass',
                             2 => 'Neon Ambient Edge',
                             3 => 'Minimal Slate',
@@ -1956,13 +1950,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: <Widget>[
                   for (
                     int i = 0;
-                    i < RodinAppearanceConfig.accents.length;
+                    i < OnyxAppearanceConfig.accents.length;
                     i++
                   ) ...<Widget>[
                     PressScale(
                       onTap: () {
                         widget.onAccentChanged(i);
-                        RodinHaptics.tap();
+                        OnyxHaptics.tap();
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -1971,14 +1965,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: config.accentIndex == i
-                              ? RodinAppearanceConfig.accents[i].withValues(
+                              ? OnyxAppearanceConfig.accents[i].withValues(
                                   alpha: 0.16,
                                 )
                               : colors.surfaceContainer.withValues(alpha: 0.8),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                             color: config.accentIndex == i
-                                ? RodinAppearanceConfig.accents[i]
+                                ? OnyxAppearanceConfig.accents[i]
                                 : colors.outline.withValues(alpha: 0.22),
                             width: config.accentIndex == i ? 1.5 : 1.0,
                           ),
@@ -1990,13 +1984,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               width: 12,
                               height: 12,
                               decoration: BoxDecoration(
-                                color: RodinAppearanceConfig.accents[i],
+                                color: OnyxAppearanceConfig.accents[i],
                                 shape: BoxShape.circle,
                                 boxShadow: config.accentIndex == i
                                     ? <BoxShadow>[
                                         BoxShadow(
-                                          color: RodinAppearanceConfig
-                                              .accents[i]
+                                          color: OnyxAppearanceConfig.accents[i]
                                               .withValues(alpha: 0.6),
                                           blurRadius: 6,
                                         ),
@@ -2006,7 +1999,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              RodinAppearanceConfig.accentNames[i],
+                              OnyxAppearanceConfig.accentNames[i],
                               style: TextStyle(
                                 fontSize: 11.5,
                                 fontWeight: config.accentIndex == i
@@ -2053,40 +2046,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 spacing: 7,
                 runSpacing: 7,
                 children: <Widget>[
-                  _RodinAppearanceChoice(
+                  _OnyxAppearanceChoice(
                     label: 'Sharp (10px)',
                     icon: Icons.square_outlined,
                     selected: (config.cardRadius - 10.0).abs() < 1.0,
                     onTap: () {
                       widget.onCardRadiusChanged(10.0);
-                      RodinHaptics.tap();
+                      OnyxHaptics.tap();
                     },
                   ),
-                  _RodinAppearanceChoice(
+                  _OnyxAppearanceChoice(
                     label: 'Classic (16px)',
                     icon: Icons.rounded_corner_rounded,
                     selected: (config.cardRadius - 16.0).abs() < 1.0,
                     onTap: () {
                       widget.onCardRadiusChanged(16.0);
-                      RodinHaptics.tap();
+                      OnyxHaptics.tap();
                     },
                   ),
-                  _RodinAppearanceChoice(
+                  _OnyxAppearanceChoice(
                     label: 'Squircle (22px)',
                     icon: Icons.crop_square_rounded,
                     selected: (config.cardRadius - 22.0).abs() < 1.0,
                     onTap: () {
                       widget.onCardRadiusChanged(22.0);
-                      RodinHaptics.tap();
+                      OnyxHaptics.tap();
                     },
                   ),
-                  _RodinAppearanceChoice(
+                  _OnyxAppearanceChoice(
                     label: 'Pill (28px)',
                     icon: Icons.circle_outlined,
                     selected: (config.cardRadius - 28.0).abs() < 1.0,
                     onTap: () {
                       widget.onCardRadiusChanged(28.0);
-                      RodinHaptics.tap();
+                      OnyxHaptics.tap();
                     },
                   ),
                 ],
@@ -2109,40 +2102,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 spacing: 7,
                 runSpacing: 7,
                 children: <Widget>[
-                  _RodinAppearanceChoice(
+                  _OnyxAppearanceChoice(
                     label: 'AMOLED Deep',
                     icon: Icons.dark_mode_outlined,
                     selected: config.cardStyle == 0,
                     onTap: () {
                       widget.onCardStyleChanged(0);
-                      RodinHaptics.tap();
+                      OnyxHaptics.tap();
                     },
                   ),
-                  _RodinAppearanceChoice(
+                  _OnyxAppearanceChoice(
                     label: 'Frosted Glass',
                     icon: Icons.blur_on_rounded,
                     selected: config.cardStyle == 1,
                     onTap: () {
                       widget.onCardStyleChanged(1);
-                      RodinHaptics.tap();
+                      OnyxHaptics.tap();
                     },
                   ),
-                  _RodinAppearanceChoice(
+                  _OnyxAppearanceChoice(
                     label: 'Neon Edge',
                     icon: Icons.auto_awesome_outlined,
                     selected: config.cardStyle == 2,
                     onTap: () {
                       widget.onCardStyleChanged(2);
-                      RodinHaptics.tap();
+                      OnyxHaptics.tap();
                     },
                   ),
-                  _RodinAppearanceChoice(
+                  _OnyxAppearanceChoice(
                     label: 'Minimal Slate',
                     icon: Icons.layers_outlined,
                     selected: config.cardStyle == 3,
                     onTap: () {
                       widget.onCardStyleChanged(3);
-                      RodinHaptics.tap();
+                      OnyxHaptics.tap();
                     },
                   ),
                 ],
@@ -2187,7 +2180,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     value: config.heroGlow,
                     onChanged: (bool enabled) {
                       widget.onHeroGlowChanged(enabled);
-                      RodinHaptics.tap();
+                      OnyxHaptics.tap();
                     },
                   ),
                 ],
@@ -2210,31 +2203,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 spacing: 7,
                 runSpacing: 7,
                 children: <Widget>[
-                  _RodinAppearanceChoice(
+                  _OnyxAppearanceChoice(
                     label: 'Capsules',
                     icon: Icons.view_column_rounded,
                     selected: config.coreVisualizerStyle == 0,
                     onTap: () {
                       widget.onCoreVisualizerStyleChanged(0);
-                      RodinHaptics.tap();
+                      OnyxHaptics.tap();
                     },
                   ),
-                  _RodinAppearanceChoice(
+                  _OnyxAppearanceChoice(
                     label: 'Neon Dots',
                     icon: Icons.radio_button_checked_rounded,
                     selected: config.coreVisualizerStyle == 1,
                     onTap: () {
                       widget.onCoreVisualizerStyleChanged(1);
-                      RodinHaptics.tap();
+                      OnyxHaptics.tap();
                     },
                   ),
-                  _RodinAppearanceChoice(
+                  _OnyxAppearanceChoice(
                     label: 'Energy Bar',
                     icon: Icons.horizontal_distribute_rounded,
                     selected: config.coreVisualizerStyle == 2,
                     onTap: () {
                       widget.onCoreVisualizerStyleChanged(2);
-                      RodinHaptics.tap();
+                      OnyxHaptics.tap();
                     },
                   ),
                 ],
@@ -2268,31 +2261,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 spacing: 7,
                 runSpacing: 7,
                 children: <Widget>[
-                  _RodinAppearanceChoice(
+                  _OnyxAppearanceChoice(
                     label: 'System',
                     icon: Icons.brightness_auto_rounded,
                     selected:
-                        config.themePreference == RodinThemePreference.system,
+                        config.themePreference == OnyxThemePreference.system,
                     onTap: () => widget.onThemePreferenceChanged(
-                      RodinThemePreference.system,
+                      OnyxThemePreference.system,
                     ),
                   ),
-                  _RodinAppearanceChoice(
+                  _OnyxAppearanceChoice(
                     label: 'Light',
                     icon: Icons.light_mode_rounded,
                     selected:
-                        config.themePreference == RodinThemePreference.light,
+                        config.themePreference == OnyxThemePreference.light,
                     onTap: () => widget.onThemePreferenceChanged(
-                      RodinThemePreference.light,
+                      OnyxThemePreference.light,
                     ),
                   ),
-                  _RodinAppearanceChoice(
+                  _OnyxAppearanceChoice(
                     label: 'AMOLED',
                     icon: Icons.dark_mode_rounded,
                     selected:
-                        config.themePreference == RodinThemePreference.dark,
+                        config.themePreference == OnyxThemePreference.dark,
                     onTap: () => widget.onThemePreferenceChanged(
-                      RodinThemePreference.dark,
+                      OnyxThemePreference.dark,
                     ),
                   ),
                 ],
@@ -2306,7 +2299,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SectionLabel('Interaction'),
         const SizedBox(height: 9),
         ValueListenableBuilder<int>(
-          valueListenable: RodinInteractionSettings.revision,
+          valueListenable: OnyxInteractionSettings.revision,
           builder: (BuildContext context, int revision, Widget? child) {
             final ColorScheme colors = Theme.of(context).colorScheme;
 
@@ -2343,7 +2336,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              RodinInteractionSettings.motionLabel,
+                              OnyxInteractionSettings.motionLabel,
                               style: TextStyle(
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w700,
@@ -2363,7 +2356,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
-                          '${RodinInteractionSettings.motionSpeed.toStringAsFixed(2)}×',
+                          '${OnyxInteractionSettings.motionSpeed.toStringAsFixed(2)}×',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
@@ -2396,10 +2389,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     child: AnimatedAlign(
-                      duration: RodinInteractionSettings.motionDuration(300),
-                      curve: RodinInteractionSettings.transitionCurve,
+                      duration: OnyxInteractionSettings.motionDuration(300),
+                      curve: OnyxInteractionSettings.transitionCurve,
                       alignment: Alignment(
-                        -1.0 + RodinInteractionSettings.motionProgress * 2.0,
+                        -1.0 + OnyxInteractionSettings.motionProgress * 2.0,
                         0,
                       ),
                       child: Container(
@@ -2428,21 +2421,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     min: 0.75,
                     max: 1.35,
                     divisions: 24,
-                    value: RodinInteractionSettings.motionSpeed,
+                    value: OnyxInteractionSettings.motionSpeed,
                     onChangeStart: (_) {
                       widget.onHorizontalControlActive(true);
-                      RodinHaptics.segment();
+                      OnyxHaptics.segment();
                     },
                     onChanged: (double value) {
                       setState(() {
-                        RodinInteractionSettings.previewMotionSpeed(value);
+                        OnyxInteractionSettings.previewMotionSpeed(value);
                       });
-                      RodinHaptics.frequentSegment();
+                      OnyxHaptics.frequentSegment();
                     },
                     onChangeEnd: (double value) {
-                      RodinInteractionSettings.commitMotionSpeed(value);
+                      OnyxInteractionSettings.commitMotionSpeed(value);
                       widget.onHorizontalControlActive(false);
-                      RodinHaptics.confirm();
+                      OnyxHaptics.confirm();
                     },
                   ),
                   Padding(
@@ -2479,9 +2472,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: TextButton.icon(
                       onPressed: () {
                         setState(() {
-                          RodinInteractionSettings.resetMotion();
+                          OnyxInteractionSettings.resetMotion();
                         });
-                        RodinHaptics.confirm();
+                        OnyxHaptics.confirm();
                       },
                       icon: const Icon(Icons.restart_alt_rounded, size: 17),
                       label: const Text('Reset to balanced'),
@@ -2514,16 +2507,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       Switch.adaptive(
-                        value: RodinInteractionSettings.hapticsEnabled,
+                        value: OnyxInteractionSettings.hapticsEnabled,
                         onChanged: (bool enabled) {
                           if (!enabled) {
-                            RodinHaptics.toggle(false);
+                            OnyxHaptics.toggle(false);
                           }
 
-                          RodinInteractionSettings.setHaptics(enabled);
+                          OnyxInteractionSettings.setHaptics(enabled);
 
                           if (enabled) {
-                            RodinHaptics.confirm();
+                            OnyxHaptics.confirm();
                           }
                         },
                       ),
@@ -2560,38 +2553,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 spacing: 7,
                 runSpacing: 7,
                 children: <Widget>[
-                  _RodinAppearanceChoice(
+                  _OnyxAppearanceChoice(
                     label: 'System',
                     icon: Icons.phone_android_rounded,
                     selected:
-                        config.backgroundStyle == RodinBackgroundStyle.system,
+                        config.backgroundStyle == OnyxBackgroundStyle.system,
                     onTap: () => widget.onBackgroundStyleChanged(
-                      RodinBackgroundStyle.system,
+                      OnyxBackgroundStyle.system,
                     ),
                   ),
-                  _RodinAppearanceChoice(
+                  _OnyxAppearanceChoice(
                     label: 'Midnight',
                     icon: Icons.nights_stay_rounded,
                     selected:
-                        config.backgroundStyle == RodinBackgroundStyle.midnight,
+                        config.backgroundStyle == OnyxBackgroundStyle.midnight,
                     onTap: () => widget.onBackgroundStyleChanged(
-                      RodinBackgroundStyle.midnight,
+                      OnyxBackgroundStyle.midnight,
                     ),
                   ),
-                  _RodinAppearanceChoice(
+                  _OnyxAppearanceChoice(
                     label: 'Aurora',
                     icon: Icons.auto_awesome_rounded,
                     selected:
-                        config.backgroundStyle == RodinBackgroundStyle.aurora,
+                        config.backgroundStyle == OnyxBackgroundStyle.aurora,
                     onTap: () => widget.onBackgroundStyleChanged(
-                      RodinBackgroundStyle.aurora,
+                      OnyxBackgroundStyle.aurora,
                     ),
                   ),
-                  _RodinAppearanceChoice(
+                  _OnyxAppearanceChoice(
                     label: _choosingPhoto ? 'Opening…' : 'Gallery',
                     icon: Icons.photo_library_rounded,
                     selected:
-                        config.backgroundStyle == RodinBackgroundStyle.custom,
+                        config.backgroundStyle == OnyxBackgroundStyle.custom,
                     onTap: _choosePhoto,
                   ),
                 ],
@@ -2652,16 +2645,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 value: config.backgroundBlur.clamp(0.0, 28.0).toDouble(),
                 onChangeStart: (_) {
                   widget.onHorizontalControlActive(true);
-                  RodinHaptics.segment();
+                  OnyxHaptics.segment();
                 },
                 onChanged: (double value) {
                   widget.onBlurChanged(value);
-                  RodinHaptics.frequentSegment();
+                  OnyxHaptics.frequentSegment();
                 },
                 onChangeEnd: (double value) {
                   widget.onBlurChangeEnd(value);
                   widget.onHorizontalControlActive(false);
-                  RodinHaptics.confirm();
+                  OnyxHaptics.confirm();
                 },
               ),
             ],
@@ -2719,23 +2712,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-class _RodinGalleryItem {
-  const _RodinGalleryItem({required this.path, required this.modified});
+class _OnyxGalleryItem {
+  const _OnyxGalleryItem({required this.path, required this.modified});
 
   final String path;
   final DateTime modified;
 }
 
-class _RodinGalleryBrowser extends StatefulWidget {
-  const _RodinGalleryBrowser({required this.permissionState});
+class _OnyxGalleryBrowser extends StatefulWidget {
+  const _OnyxGalleryBrowser({required this.permissionState});
 
   final int permissionState;
 
   @override
-  State<_RodinGalleryBrowser> createState() => _RodinGalleryBrowserState();
+  State<_OnyxGalleryBrowser> createState() => _OnyxGalleryBrowserState();
 }
 
-class _RodinGalleryBrowserState extends State<_RodinGalleryBrowser> {
+class _OnyxGalleryBrowserState extends State<_OnyxGalleryBrowser> {
   static const int _maxItems = 360;
 
   static const List<String> _roots = <String>[
@@ -2746,7 +2739,7 @@ class _RodinGalleryBrowserState extends State<_RodinGalleryBrowser> {
 
   bool _loading = true;
   String? _error;
-  List<_RodinGalleryItem> _items = const <_RodinGalleryItem>[];
+  List<_OnyxGalleryItem> _items = const <_OnyxGalleryItem>[];
 
   @override
   void initState() {
@@ -2774,7 +2767,7 @@ class _RodinGalleryBrowserState extends State<_RodinGalleryBrowser> {
   }
 
   Future<void> _load() async {
-    final List<_RodinGalleryItem> result = <_RodinGalleryItem>[];
+    final List<_OnyxGalleryItem> result = <_OnyxGalleryItem>[];
     final Set<String> seen = <String>{};
 
     try {
@@ -2820,13 +2813,13 @@ class _RodinGalleryBrowserState extends State<_RodinGalleryBrowser> {
               modified = DateTime.fromMillisecondsSinceEpoch(0);
             }
 
-            result.add(_RodinGalleryItem(path: path, modified: modified));
+            result.add(_OnyxGalleryItem(path: path, modified: modified));
           }
         } catch (_) {}
       }
 
       result.sort(
-        (_RodinGalleryItem a, _RodinGalleryItem b) =>
+        (_OnyxGalleryItem a, _OnyxGalleryItem b) =>
             b.modified.compareTo(a.modified),
       );
 
@@ -2917,7 +2910,7 @@ class _RodinGalleryBrowserState extends State<_RodinGalleryBrowser> {
                 ],
               ),
             ),
-            Divider(height: 1, color: RodinSurfaceLines.divider(colors)),
+            Divider(height: 1, color: OnyxSurfaceLines.divider(colors)),
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
@@ -2945,7 +2938,7 @@ class _RodinGalleryBrowserState extends State<_RodinGalleryBrowser> {
                           ),
                       itemCount: _items.length,
                       itemBuilder: (BuildContext context, int index) {
-                        final _RodinGalleryItem item = _items[index];
+                        final _OnyxGalleryItem item = _items[index];
 
                         return GestureDetector(
                           behavior: HitTestBehavior.opaque,
@@ -2987,8 +2980,8 @@ class _RodinGalleryBrowserState extends State<_RodinGalleryBrowser> {
   }
 }
 
-class _RodinAppearanceChoice extends StatelessWidget {
-  const _RodinAppearanceChoice({
+class _OnyxAppearanceChoice extends StatelessWidget {
+  const _OnyxAppearanceChoice({
     required this.label,
     required this.icon,
     required this.selected,
@@ -3054,15 +3047,15 @@ class HomeScreen extends StatelessWidget {
     super.key,
   });
 
-  final ValueChanged<RodinScreen> onOpen;
+  final ValueChanged<OnyxScreen> onOpen;
   final VoidCallback onHubs;
   final VoidCallback onSupport;
 
   @override
   Widget build(BuildContext context) {
-    return RodinScrollPage(
+    return OnyxScrollPage(
       children: <Widget>[
-        const RodinHeader(
+        const OnyxHeader(
           title: 'Onyx Essential',
           subtitle: 'Precision you can feel.',
           large: false,
@@ -3092,23 +3085,21 @@ class HomeScreen extends StatelessWidget {
 class _HomePulseHero extends StatelessWidget {
   const _HomePulseHero({required this.onOpen});
 
-  final ValueChanged<RodinScreen> onOpen;
+  final ValueChanged<OnyxScreen> onOpen;
 
   @override
   Widget build(BuildContext context) {
     return _BackendSnapshotBuilder(
-      builder: (RodinBackendSnapshot snapshot) {
+      builder: (OnyxBackendSnapshot snapshot) {
         final ThemeData theme = Theme.of(context);
         final ColorScheme colors = theme.colorScheme;
         final bool dark = theme.brightness == Brightness.dark;
-        final RodinBackend backend = RodinBackend.instance;
-        final RodinAppearanceConfig appearance = RodinAppearanceScope.of(
-          context,
-        );
+        final OnyxBackend backend = OnyxBackend.instance;
+        final OnyxAppearanceConfig appearance = OnyxAppearanceScope.of(context);
         final int activePerf = snapshot.performanceProfile >= 0
             ? snapshot.performanceProfile
             : 0;
-        final String profile = _rodinPerformanceLabel(activePerf);
+        final String profile = _onyxPerformanceLabel(activePerf);
         final Color profileAccent = switch (activePerf) {
           2 => const Color(0xFF35C997),
           1 => const Color(0xFFFFB84D),
@@ -3127,7 +3118,7 @@ class _HomePulseHero extends StatelessWidget {
           3 => 'GPU requests a 1150 MHz frequency floor and ceiling',
           _ => 'OEM-balanced performance and efficiency for everyday use',
         };
-        final int onlineCores = _rodinOnlineCoreCount(snapshot);
+        final int onlineCores = _onyxOnlineCoreCount(snapshot);
         final String battery = snapshot.batteryCapacity >= 0
             ? '${snapshot.batteryCapacity}%'
             : '—';
@@ -3347,7 +3338,7 @@ class _HomePulseHero extends StatelessWidget {
                                   detail: temperature,
                                   icon: Icons.battery_5_bar_rounded,
                                   accent: const Color(0xFF41C98A),
-                                  onTap: () => onOpen(RodinScreen.charging),
+                                  onTap: () => onOpen(OnyxScreen.charging),
                                 ),
                               ),
                               const SizedBox(width: 7),
@@ -3360,7 +3351,7 @@ class _HomePulseHero extends StatelessWidget {
                                       : 'Waiting for GPU',
                                   icon: Icons.sports_esports_rounded,
                                   accent: const Color(0xFFFF5252),
-                                  onTap: () => onOpen(RodinScreen.maliGpu),
+                                  onTap: () => onOpen(OnyxScreen.maliGpu),
                                 ),
                               ),
                               const SizedBox(width: 7),
@@ -3371,7 +3362,7 @@ class _HomePulseHero extends StatelessWidget {
                                   detail: touchDetail,
                                   icon: Icons.touch_app_rounded,
                                   accent: const Color(0xFF41C98A),
-                                  onTap: () => onOpen(RodinScreen.touchBoost),
+                                  onTap: () => onOpen(OnyxScreen.touchBoost),
                                 ),
                               ),
                             ],
@@ -3388,8 +3379,8 @@ class _HomePulseHero extends StatelessWidget {
 
         return TweenAnimationBuilder<double>(
           tween: Tween<double>(begin: 0, end: 1),
-          duration: RodinInteractionSettings.motionDuration(420),
-          curve: RodinInteractionSettings.transitionCurve,
+          duration: OnyxInteractionSettings.motionDuration(420),
+          curve: OnyxInteractionSettings.transitionCurve,
           child: hero,
           builder: (BuildContext context, double value, Widget? child) {
             return Opacity(
@@ -3436,7 +3427,7 @@ class _HomeHeroMetric extends StatelessWidget {
           color: colors.surface.withValues(alpha: 0.52),
           borderRadius: BorderRadius.circular(13),
           border: Border.all(
-            color: RodinSurfaceLines.inset(colors),
+            color: OnyxSurfaceLines.inset(colors),
             width: 0.85,
           ),
         ),
@@ -3490,7 +3481,7 @@ class _HomeHeroMetric extends StatelessWidget {
 class _HomeLiveBadge extends StatelessWidget {
   const _HomeLiveBadge({required this.snapshot});
 
-  final RodinBackendSnapshot snapshot;
+  final OnyxBackendSnapshot snapshot;
 
   @override
   Widget build(BuildContext context) {
@@ -3540,7 +3531,7 @@ class _HomeCoreVisualizer extends StatelessWidget {
     required this.style,
   });
 
-  final RodinBackendSnapshot snapshot;
+  final OnyxBackendSnapshot snapshot;
   final int onlineCores;
   final int style;
 
@@ -3630,7 +3621,7 @@ class _HomeCoreVisualizer extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: RodinSurfaceLines.inset(colors), width: 0.85),
+        border: Border.all(color: OnyxSurfaceLines.inset(colors), width: 0.85),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -3682,7 +3673,7 @@ class _HomeCoreVisualizer extends StatelessWidget {
 class _HomeQuickActions extends StatelessWidget {
   const _HomeQuickActions({required this.onOpen});
 
-  final ValueChanged<RodinScreen> onOpen;
+  final ValueChanged<OnyxScreen> onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -3698,13 +3689,13 @@ class _HomeQuickActions extends StatelessWidget {
               subtitle: 'Profiles',
               icon: Icons.sports_esports_rounded,
               accent: const Color(0xFFFF5252),
-              onTap: () => onOpen(RodinScreen.maliGpu),
+              onTap: () => onOpen(OnyxScreen.maliGpu),
             ),
           ),
           Container(
             width: 1,
             height: 42,
-            color: RodinSurfaceLines.divider(colors),
+            color: OnyxSurfaceLines.divider(colors),
           ),
           Expanded(
             child: _HomeQuickAction(
@@ -3712,13 +3703,13 @@ class _HomeQuickActions extends StatelessWidget {
               subtitle: 'Response',
               icon: Icons.touch_app_rounded,
               accent: const Color(0xFF41C98A),
-              onTap: () => onOpen(RodinScreen.touchBoost),
+              onTap: () => onOpen(OnyxScreen.touchBoost),
             ),
           ),
           Container(
             width: 1,
             height: 42,
-            color: RodinSurfaceLines.divider(colors),
+            color: OnyxSurfaceLines.divider(colors),
           ),
           Expanded(
             child: _HomeQuickAction(
@@ -3726,7 +3717,7 @@ class _HomeQuickActions extends StatelessWidget {
               subtitle: 'Cores & MHz',
               icon: Icons.memory_rounded,
               accent: const Color(0xFF67C2FF),
-              onTap: () => onOpen(RodinScreen.cpuControl),
+              onTap: () => onOpen(OnyxScreen.cpuControl),
             ),
           ),
         ],
@@ -3802,7 +3793,7 @@ class _HomeQuickAction extends StatelessWidget {
 class _HomeShortcutPanel extends StatelessWidget {
   const _HomeShortcutPanel({required this.onOpen, required this.onSupport});
 
-  final ValueChanged<RodinScreen> onOpen;
+  final ValueChanged<OnyxScreen> onOpen;
   final VoidCallback onSupport;
 
   @override
@@ -3814,7 +3805,7 @@ class _HomeShortcutPanel extends StatelessWidget {
       child: Divider(
         height: 1,
         thickness: 0.8,
-        color: RodinSurfaceLines.divider(colors),
+        color: OnyxSurfaceLines.divider(colors),
       ),
     );
 
@@ -3827,7 +3818,7 @@ class _HomeShortcutPanel extends StatelessWidget {
             subtitle: 'Live sensors and hardware health',
             icon: Icons.monitor_heart_rounded,
             accent: const Color(0xFF74E6C6),
-            onTap: () => onOpen(RodinScreen.diagnostics),
+            onTap: () => onOpen(OnyxScreen.diagnostics),
           ),
           divider(),
           _HomeShortcutRow(
@@ -3835,7 +3826,7 @@ class _HomeShortcutPanel extends StatelessWidget {
             subtitle: 'Canvas size, density and refresh details',
             icon: Icons.aspect_ratio_rounded,
             accent: const Color(0xFFFFBE63),
-            onTap: () => onOpen(RodinScreen.resolution),
+            onTap: () => onOpen(OnyxScreen.resolution),
           ),
           divider(),
           _HomeShortcutRow(
@@ -4014,14 +4005,14 @@ class _DisclaimerCard extends StatelessWidget {
 class _LiveOverviewGrid extends StatelessWidget {
   const _LiveOverviewGrid({required this.onOpen});
 
-  final ValueChanged<RodinScreen> onOpen;
+  final ValueChanged<OnyxScreen> onOpen;
 
   @override
   Widget build(BuildContext context) {
     return _BackendSnapshotBuilder(
-      builder: (RodinBackendSnapshot snapshot) {
-        final RodinBackend backend = RodinBackend.instance;
-        final int onlineCores = _rodinOnlineCoreCount(snapshot);
+      builder: (OnyxBackendSnapshot snapshot) {
+        final OnyxBackend backend = OnyxBackend.instance;
+        final int onlineCores = _onyxOnlineCoreCount(snapshot);
 
         final gpuMhz = backend.extendedValue(46);
         final gpuValue = snapshot.ready && gpuMhz >= 260 ? '$gpuMhz MHz' : '—';
@@ -4041,7 +4032,7 @@ class _LiveOverviewGrid extends StatelessWidget {
           _ => 'OEM',
         };
 
-        final String touch = _rodinTouchLabel(snapshot.touchState);
+        final String touch = _onyxTouchLabel(snapshot.touchState);
 
         final int zramDiskMb = backend.extendedValue(39) > 0
             ? backend.extendedValue(39)
@@ -4077,13 +4068,13 @@ class _LiveOverviewGrid extends StatelessWidget {
                       subtitle: gpuSubtitle,
                       icon: Icons.sports_esports_rounded,
                       accent: const Color(0xFFFF7279),
-                      onTap: () => onOpen(RodinScreen.maliGpu),
+                      onTap: () => onOpen(OnyxScreen.maliGpu),
                     ),
                   ),
                   Container(
                     width: 1,
                     height: 54,
-                    color: RodinSurfaceLines.divider(colors),
+                    color: OnyxSurfaceLines.divider(colors),
                   ),
                   Expanded(
                     child: _OverviewCard(
@@ -4092,7 +4083,7 @@ class _LiveOverviewGrid extends StatelessWidget {
                       subtitle: coreSubtitle,
                       icon: Icons.memory_rounded,
                       accent: const Color(0xFF67C2FF),
-                      onTap: () => onOpen(RodinScreen.cpuControl),
+                      onTap: () => onOpen(OnyxScreen.cpuControl),
                     ),
                   ),
                 ],
@@ -4100,7 +4091,7 @@ class _LiveOverviewGrid extends StatelessWidget {
               Divider(
                 height: 1,
                 thickness: 0.8,
-                color: RodinSurfaceLines.divider(colors),
+                color: OnyxSurfaceLines.divider(colors),
               ),
               Row(
                 children: <Widget>[
@@ -4114,13 +4105,13 @@ class _LiveOverviewGrid extends StatelessWidget {
                           : touch,
                       icon: Icons.display_settings_rounded,
                       accent: const Color(0xFFB087FF),
-                      onTap: () => onOpen(RodinScreen.displayStudio),
+                      onTap: () => onOpen(OnyxScreen.displayStudio),
                     ),
                   ),
                   Container(
                     width: 1,
                     height: 54,
-                    color: RodinSurfaceLines.divider(colors),
+                    color: OnyxSurfaceLines.divider(colors),
                   ),
                   Expanded(
                     child: _OverviewCard(
@@ -4129,7 +4120,7 @@ class _LiveOverviewGrid extends StatelessWidget {
                       subtitle: memorySub,
                       icon: Icons.layers_rounded,
                       accent: const Color(0xFFFFB84D),
-                      onTap: () => onOpen(RodinScreen.zramSwap),
+                      onTap: () => onOpen(OnyxScreen.zramSwap),
                     ),
                   ),
                 ],
@@ -4335,7 +4326,7 @@ class _ControlCenterPortal extends StatelessWidget {
   }
 }
 
-int _rodinOnlineCoreCount(RodinBackendSnapshot snapshot) {
+int _onyxOnlineCoreCount(OnyxBackendSnapshot snapshot) {
   int count = 0;
 
   for (int cpu = 0; cpu < 8; cpu += 1) {
@@ -4347,7 +4338,7 @@ int _rodinOnlineCoreCount(RodinBackendSnapshot snapshot) {
   return count;
 }
 
-String _rodinPerformanceLabel(int profile) {
+String _onyxPerformanceLabel(int profile) {
   return switch (profile) {
     0 => 'Stock Balanced',
     1 => 'Gaming Dynamic',
@@ -4357,7 +4348,7 @@ String _rodinPerformanceLabel(int profile) {
   };
 }
 
-String _rodinTouchLabel(int profile) {
+String _onyxTouchLabel(int profile) {
   return switch (profile) {
     1 => '240 Hz',
     2 => '480 Hz',
@@ -4369,17 +4360,17 @@ String _rodinTouchLabel(int profile) {
 class HubsScreen extends StatelessWidget {
   const HubsScreen({required this.onOpen, super.key});
 
-  final ValueChanged<RodinScreen> onOpen;
+  final ValueChanged<OnyxScreen> onOpen;
 
   @override
   Widget build(BuildContext context) {
     return _BackendSnapshotBuilder(
-      builder: (RodinBackendSnapshot snapshot) {
-        final RodinBackend backend = RodinBackend.instance;
+      builder: (OnyxBackendSnapshot snapshot) {
+        final OnyxBackend backend = OnyxBackend.instance;
         final String battery = snapshot.batteryCapacity >= 0
             ? '${snapshot.batteryCapacity}%'
             : '—';
-        final int onlineCores = _rodinOnlineCoreCount(snapshot);
+        final int onlineCores = _onyxOnlineCoreCount(snapshot);
         final String cores = snapshot.ready ? '$onlineCores / 8' : '—';
         final int liveGpuFreq = backend.extendedValue(46) >= 0
             ? backend.extendedValue(46)
@@ -4406,7 +4397,7 @@ class HubsScreen extends StatelessWidget {
           2 => 'Saturated',
           _ => 'OEM Control',
         };
-        final String touchMode = _rodinTouchLabel(snapshot.touchState);
+        final String touchMode = _onyxTouchLabel(snapshot.touchState);
         final int zramDiskMb = backend.extendedValue(39) > 0
             ? backend.extendedValue(39)
             : 8192;
@@ -4418,24 +4409,24 @@ class HubsScreen extends StatelessWidget {
             ? 'Charging controls and power statistics'
             : '$battery · Charging controls and power stats';
 
-        return RodinScrollPage(
+        return OnyxScrollPage(
           children: <Widget>[
-            const RodinHeader(
+            const OnyxHeader(
               title: 'Control Hubs',
               subtitle: 'Performance, display and system controls',
             ),
             const SizedBox(height: 11),
             _HubReveal(
               child: _HubProfileHero(
-                profile: _rodinPerformanceLabel(activePerf),
+                profile: _onyxPerformanceLabel(activePerf),
                 snapshot: snapshot,
                 battery: battery,
                 cores: cores,
                 gpu: gpuLabel,
                 gpuAccent: const Color(0xFFFF5252),
-                onBattery: () => onOpen(RodinScreen.charging),
-                onCpu: () => onOpen(RodinScreen.cpuControl),
-                onGpu: () => onOpen(RodinScreen.maliGpu),
+                onBattery: () => onOpen(OnyxScreen.charging),
+                onCpu: () => onOpen(OnyxScreen.cpuControl),
+                onGpu: () => onOpen(OnyxScreen.maliGpu),
               ),
             ),
             const SizedBox(height: 12),
@@ -4453,7 +4444,7 @@ class HubsScreen extends StatelessWidget {
                       subtitle: cpuSummary,
                       icon: Icons.memory_rounded,
                       accent: const Color(0xFF67C2FF),
-                      onTap: () => onOpen(RodinScreen.cpuControl),
+                      onTap: () => onOpen(OnyxScreen.cpuControl),
                     ),
                     const _HubControlDivider(),
                     _HubControlRow(
@@ -4463,7 +4454,7 @@ class HubsScreen extends StatelessWidget {
                       value: gpuLabel,
                       icon: Icons.sports_esports_rounded,
                       accent: const Color(0xFFFF5252),
-                      onTap: () => onOpen(RodinScreen.maliGpu),
+                      onTap: () => onOpen(OnyxScreen.maliGpu),
                     ),
                     const _HubControlDivider(),
                     _HubControlRow(
@@ -4471,7 +4462,7 @@ class HubsScreen extends StatelessWidget {
                       subtitle: 'Governors, scheduler & device tuning',
                       icon: Icons.tune_rounded,
                       accent: const Color(0xFFFFB84D),
-                      onTap: () => onOpen(RodinScreen.advancedConfiguration),
+                      onTap: () => onOpen(OnyxScreen.advancedConfiguration),
                     ),
                     const _HubControlDivider(),
                     _HubControlRow(
@@ -4479,7 +4470,7 @@ class HubsScreen extends StatelessWidget {
                       subtitle: 'DRAM & storage ranges and exact locks',
                       icon: Icons.storage_rounded,
                       accent: const Color(0xFFB087FF),
-                      onTap: () => onOpen(RodinScreen.subsystemClocks),
+                      onTap: () => onOpen(OnyxScreen.subsystemClocks),
                     ),
                     const _HubControlDivider(),
                     _HubControlRow(
@@ -4488,7 +4479,7 @@ class HubsScreen extends StatelessWidget {
                       wrapSubtitle: true,
                       icon: Icons.apps_rounded,
                       accent: const Color(0xFFB087FF),
-                      onTap: () => onOpen(RodinScreen.perAppControls),
+                      onTap: () => onOpen(OnyxScreen.perAppControls),
                     ),
                   ],
                 ),
@@ -4509,7 +4500,7 @@ class HubsScreen extends StatelessWidget {
                       subtitle: '$touchMode · Sampling and instant boost',
                       icon: Icons.swipe_rounded,
                       accent: const Color(0xFF41C98A),
-                      onTap: () => onOpen(RodinScreen.touchBoost),
+                      onTap: () => onOpen(OnyxScreen.touchBoost),
                     ),
                     const _HubControlDivider(),
                     _HubControlRow(
@@ -4517,7 +4508,7 @@ class HubsScreen extends StatelessWidget {
                       subtitle: '$displayMode · Color and HDR tuning',
                       icon: Icons.palette_rounded,
                       accent: const Color(0xFFB087FF),
-                      onTap: () => onOpen(RodinScreen.displayStudio),
+                      onTap: () => onOpen(OnyxScreen.displayStudio),
                     ),
                     const _HubControlDivider(),
                     _HubControlRow(
@@ -4525,7 +4516,7 @@ class HubsScreen extends StatelessWidget {
                       subtitle: 'Material You palettes for Android & apps',
                       icon: Icons.color_lens_rounded,
                       accent: const Color(0xFFB087FF),
-                      onTap: () => onOpen(RodinScreen.systemColors),
+                      onTap: () => onOpen(OnyxScreen.systemColors),
                     ),
                     const _HubControlDivider(),
                     _HubControlRow(
@@ -4533,7 +4524,7 @@ class HubsScreen extends StatelessWidget {
                       subtitle: '1.5K · Canvas, density and refresh rate',
                       icon: Icons.grid_view_rounded,
                       accent: const Color(0xFFFFBE63),
-                      onTap: () => onOpen(RodinScreen.resolution),
+                      onTap: () => onOpen(OnyxScreen.resolution),
                     ),
                   ],
                 ),
@@ -4554,7 +4545,7 @@ class HubsScreen extends StatelessWidget {
                       subtitle: chargingSummary,
                       icon: Icons.battery_charging_full_rounded,
                       accent: const Color(0xFF41C98A),
-                      onTap: () => onOpen(RodinScreen.charging),
+                      onTap: () => onOpen(OnyxScreen.charging),
                     ),
                     const _HubControlDivider(),
                     _HubControlRow(
@@ -4562,7 +4553,7 @@ class HubsScreen extends StatelessWidget {
                       subtitle: '$memory · Compression and swap policy',
                       icon: Icons.storage_rounded,
                       accent: const Color(0xFF67C2FF),
-                      onTap: () => onOpen(RodinScreen.zramSwap),
+                      onTap: () => onOpen(OnyxScreen.zramSwap),
                     ),
                   ],
                 ),
@@ -4579,7 +4570,7 @@ class HubsScreen extends StatelessWidget {
                   value: snapshot.serviceStatusLabel,
                   icon: Icons.monitor_heart_rounded,
                   accent: const Color(0xFF74E6C6),
-                  onTap: () => onOpen(RodinScreen.diagnostics),
+                  onTap: () => onOpen(OnyxScreen.diagnostics),
                 ),
               ),
             ),
@@ -4600,7 +4591,7 @@ class _HubReveal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final moving =
-        RodinMotionViewportScope.inFlightOf(context) ||
+        OnyxMotionViewportScope.inFlightOf(context) ||
         !TickerMode.valuesOf(context).enabled;
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: moving ? 1 : 0, end: 1),
@@ -4608,8 +4599,8 @@ class _HubReveal extends StatelessWidget {
       // its content transparent behind a muted first-visit arrival ticker.
       duration: moving
           ? Duration.zero
-          : RodinInteractionSettings.motionDuration(duration),
-      curve: RodinInteractionSettings.transitionCurve,
+          : OnyxInteractionSettings.motionDuration(duration),
+      curve: OnyxInteractionSettings.transitionCurve,
       child: child,
       builder: (BuildContext context, double value, Widget? child) {
         return Opacity(
@@ -4637,7 +4628,7 @@ class _HubProfileHero extends StatelessWidget {
     required this.onGpu,
   });
   final String profile;
-  final RodinBackendSnapshot snapshot;
+  final OnyxBackendSnapshot snapshot;
   final String battery;
   final String cores;
   final String gpu;
@@ -4744,7 +4735,7 @@ class _HubMetric extends StatelessWidget {
           color: colors.surface.withValues(alpha: 0.50),
           borderRadius: BorderRadius.circular(13),
           border: Border.all(
-            color: RodinSurfaceLines.inset(colors),
+            color: OnyxSurfaceLines.inset(colors),
             width: 0.85,
           ),
         ),
@@ -4872,7 +4863,7 @@ class _HubControlDivider extends StatelessWidget {
       child: Divider(
         height: 1,
         thickness: 0.8,
-        color: RodinSurfaceLines.divider(Theme.of(context).colorScheme),
+        color: OnyxSurfaceLines.divider(Theme.of(context).colorScheme),
       ),
     );
   }
@@ -5021,8 +5012,8 @@ class SupportScreen extends StatelessWidget {
   const SupportScreen({super.key});
 
   void _openLink(int code) {
-    RodinHaptics.confirm();
-    RodinBackend.instance.openSupportLink(code);
+    OnyxHaptics.confirm();
+    OnyxBackend.instance.openSupportLink(code);
   }
 
   @override
@@ -5030,10 +5021,10 @@ class SupportScreen extends StatelessWidget {
     final ColorScheme colors = Theme.of(context).colorScheme;
     final bool dark = Theme.of(context).brightness == Brightness.dark;
 
-    return RodinScrollPage(
+    return OnyxScrollPage(
       topPadding: 16,
       children: <Widget>[
-        const RodinHeader(
+        const OnyxHeader(
           title: 'Support',
           subtitle: 'Community, source and system information',
         ),
@@ -5048,7 +5039,7 @@ class SupportScreen extends StatelessWidget {
                 children: <Widget>[
                   Align(
                     alignment: Alignment.topCenter,
-                    child: _RodinAppEmblem(size: 60, color: colors.primary),
+                    child: _OnyxAppEmblem(size: 60, color: colors.primary),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -5077,8 +5068,8 @@ class SupportScreen extends StatelessWidget {
                           spacing: 5,
                           runSpacing: 4,
                           children: <Widget>[
-                            const RodinVersionSecret(
-                              version: 'v$rodinVersionName',
+                            const OnyxVersionSecret(
+                              version: 'v$onyxVersionName',
                             ),
                             const StatusPill(
                               label: 'Native Service',
@@ -5115,7 +5106,7 @@ class SupportScreen extends StatelessWidget {
                                       ),
                                     ),
                                     TextSpan(
-                                      text: rodinReleaseCodename,
+                                      text: onyxReleaseCodename,
                                       style: TextStyle(
                                         color: colors.primary,
                                         fontWeight: FontWeight.w800,
@@ -5168,7 +5159,7 @@ class SupportScreen extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Engineered exclusively for Snapdragon 8s Gen 4 (MT6899 / rodin)',
+                        'Engineered exclusively for Snapdragon 8s Gen 4 (MT6899 / onyx)',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -5247,7 +5238,7 @@ class SupportScreen extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                'Built-in System Component for Rodin ROMs • Zero Telemetry',
+                'Built-in System Component for Onyx ROMs • Zero Telemetry',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 10,
@@ -5264,8 +5255,8 @@ class SupportScreen extends StatelessWidget {
   }
 }
 
-class _RodinAppEmblem extends StatelessWidget {
-  const _RodinAppEmblem({required this.size, required this.color});
+class _OnyxAppEmblem extends StatelessWidget {
+  const _OnyxAppEmblem({required this.size, required this.color});
 
   final double size;
   final Color color;
@@ -5457,29 +5448,29 @@ class _ChargingScreenState extends State<ChargingScreen> {
   @override
   void initState() {
     super.initState();
-    RodinBackend.instance.refresh();
+    OnyxBackend.instance.refresh();
     if (widget.focusRequest > 0) _focusBypass();
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<RodinBackendSnapshot>(
-      stream: RodinBackend.instance.snapshots,
-      initialData: RodinBackend.instance.latest,
+    return StreamBuilder<OnyxBackendSnapshot>(
+      stream: OnyxBackend.instance.snapshots,
+      initialData: OnyxBackend.instance.latest,
       builder:
           (
             BuildContext context,
-            AsyncSnapshot<RodinBackendSnapshot> asyncSnapshot,
+            AsyncSnapshot<OnyxBackendSnapshot> asyncSnapshot,
           ) {
-            final RodinBackendSnapshot snapshot =
-                asyncSnapshot.data ?? RodinBackend.instance.latest;
+            final OnyxBackendSnapshot snapshot =
+                asyncSnapshot.data ?? OnyxBackend.instance.latest;
 
-            return RodinScrollPage(
+            return OnyxScrollPage(
               children: <Widget>[
                 DetailHeader(title: 'Charging Control', onBack: widget.onBack),
                 const SizedBox(height: 3),
                 Text(
-                  'Rodin-native power ceilings with verified live telemetry',
+                  'Onyx-native power ceilings with verified live telemetry',
                   style: TextStyle(
                     fontSize: 13.5,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -5504,7 +5495,7 @@ class _ChargingScreenState extends State<ChargingScreen> {
 class _BypassChargingCard extends StatefulWidget {
   const _BypassChargingCard({required this.snapshot});
 
-  final RodinBackendSnapshot snapshot;
+  final OnyxBackendSnapshot snapshot;
 
   @override
   State<_BypassChargingCard> createState() => _BypassChargingCardState();
@@ -5518,24 +5509,24 @@ class _BypassChargingCardState extends State<_BypassChargingCard> {
 
   bool get _directPowerConfirmed => isBypassDirectPowerConfirmed(
     ready: snapshot.ready,
-    enabled: RodinBackend.instance.bypassChargingEnabled,
-    kernelActive: RodinBackend.instance.bypassHardwareActive,
+    enabled: OnyxBackend.instance.bypassChargingEnabled,
+    kernelActive: OnyxBackend.instance.bypassHardwareActive,
     usbOnline: snapshot.usbOnline,
     batteryCurrentA: snapshot.batteryCurrentA,
   );
 
-  RodinBackendSnapshot get snapshot => widget.snapshot;
+  OnyxBackendSnapshot get snapshot => widget.snapshot;
 
   @override
   void didUpdateWidget(covariant _BypassChargingCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (_pending != null &&
-        (RodinBackend.instance.bypassChargingEnabled == _pending ||
+        (OnyxBackend.instance.bypassChargingEnabled == _pending ||
             snapshot.chargingWriteState == -1)) {
       _pending = null;
     }
     if (_thresholdPending != null &&
-        (RodinBackend.instance.bypassThreshold == _thresholdPending ||
+        (OnyxBackend.instance.bypassThreshold == _thresholdPending ||
             snapshot.chargingWriteState == -1)) {
       _thresholdPending = null;
     }
@@ -5545,9 +5536,9 @@ class _BypassChargingCardState extends State<_BypassChargingCard> {
     if (!snapshot.ready) return 'BACKEND UNAVAILABLE';
     if (!snapshot.serviceEnabled) return 'DISABLED';
     if (_pending != null) return 'APPLYING';
-    if (!RodinBackend.instance.bypassChargingSupported) return 'NOT SUPPORTED';
+    if (!OnyxBackend.instance.bypassChargingSupported) return 'NOT SUPPORTED';
     if (!enabled) return 'OFF';
-    return switch (RodinBackend.instance.bypassPhase) {
+    return switch (OnyxBackend.instance.bypassPhase) {
       1 => 'CHARGING TO THRESHOLD',
       2 => 'ARMED',
       4 when _directPowerConfirmed => 'DIRECT POWER',
@@ -5566,7 +5557,7 @@ class _BypassChargingCardState extends State<_BypassChargingCard> {
       return 'Onyx Essential is disabled. Enable it in Settings to use bypass charging.';
     }
     if (_pending != null) return 'Applying the kernel bypass setting…';
-    if (!RodinBackend.instance.bypassChargingSupported) {
+    if (!OnyxBackend.instance.bypassChargingSupported) {
       return 'A compatible kernel power-path bypass node is required. '
           'input_suspend is not used: stopping charger input alone does not '
           'provide direct system power.';
@@ -5579,21 +5570,21 @@ class _BypassChargingCardState extends State<_BypassChargingCard> {
     if (snapshot.usbOnline == 0) {
       return 'Bypass is armed. Connect a charger to activate direct system power.';
     }
-    final int threshold = RodinBackend.instance.bypassThreshold;
-    if (RodinBackend.instance.bypassPhase == 1) {
+    final int threshold = OnyxBackend.instance.bypassThreshold;
+    if (OnyxBackend.instance.bypassPhase == 1) {
       return 'OEM charging continues below $threshold%. At $threshold%, Onyx Essential '
           'requests bypass automatically. Charging resumes only if the level '
           'falls two percentage points below the threshold.';
     }
-    if (RodinBackend.instance.bypassPhase == 5) {
+    if (OnyxBackend.instance.bypassPhase == 5) {
       return 'The saved choice is still enabled, but kernel control or battery '
           'telemetry is unavailable. Bypass is not confirmed.';
     }
-    if (RodinBackend.instance.bypassPhase == 6) {
+    if (OnyxBackend.instance.bypassPhase == 6) {
       return 'Charge pause is requested, but the battery is supplying part of '
           'the load. Check your adapter and cable; direct power is not confirmed.';
     }
-    if (RodinBackend.instance.bypassPhase == 7) {
+    if (OnyxBackend.instance.bypassPhase == 7) {
       return 'Battery current shows charging despite the bypass request. '
           'Onyx Essential is not reporting this as working bypass.';
     }
@@ -5610,36 +5601,35 @@ class _BypassChargingCardState extends State<_BypassChargingCard> {
     if (_pending != null ||
         _thresholdPending != null ||
         snapshot.chargingWriteState == 1 ||
-        !RodinBackend.instance.bypassChargingSupported) {
+        !OnyxBackend.instance.bypassChargingSupported) {
       return;
     }
     setState(() => _pending = enabled);
-    RodinHaptics.toggle(enabled);
-    if (!RodinBackend.instance.setBypassCharging(enabled)) {
+    OnyxHaptics.toggle(enabled);
+    if (!OnyxBackend.instance.setBypassCharging(enabled)) {
       setState(() => _pending = null);
-      RodinHaptics.reject();
-      RodinBackend.instance.refresh();
+      OnyxHaptics.reject();
+      OnyxBackend.instance.refresh();
     }
   }
 
   void _setThreshold(int threshold) {
     setState(() => _thresholdPreview = null);
     if (_thresholdPending != null || !snapshot.controlsAvailable) return;
-    if (threshold == RodinBackend.instance.bypassThreshold) return;
-    RodinHaptics.segment();
+    if (threshold == OnyxBackend.instance.bypassThreshold) return;
+    OnyxHaptics.segment();
     setState(() => _thresholdPending = threshold);
-    if (!RodinBackend.instance.setBypassThreshold(threshold)) {
+    if (!OnyxBackend.instance.setBypassThreshold(threshold)) {
       setState(() => _thresholdPending = null);
-      RodinHaptics.reject();
+      OnyxHaptics.reject();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
-    final bool supported = RodinBackend.instance.bypassChargingSupported;
-    final bool enabled =
-        _pending ?? RodinBackend.instance.bypassChargingEnabled;
+    final bool supported = OnyxBackend.instance.bypassChargingSupported;
+    final bool enabled = _pending ?? OnyxBackend.instance.bypassChargingEnabled;
     final bool applying = _pending != null || snapshot.chargingWriteState == 1;
     final String state = _stateLabel(enabled);
 
@@ -5750,10 +5740,10 @@ class _BypassChargingCardState extends State<_BypassChargingCard> {
               Text(
                 (_thresholdPreview ??
                             _thresholdPending ??
-                            RodinBackend.instance.bypassThreshold) <=
+                            OnyxBackend.instance.bypassThreshold) <=
                         0
                     ? 'Immediately'
-                    : '${_thresholdPreview ?? _thresholdPending ?? RodinBackend.instance.bypassThreshold}%',
+                    : '${_thresholdPreview ?? _thresholdPending ?? OnyxBackend.instance.bypassThreshold}%',
                 style: const TextStyle(
                   color: accent,
                   fontWeight: FontWeight.w800,
@@ -5763,8 +5753,8 @@ class _BypassChargingCardState extends State<_BypassChargingCard> {
             ],
           ),
           const SizedBox(height: 8),
-          RodinBypassThresholdSelector(
-            value: _thresholdPending ?? RodinBackend.instance.bypassThreshold,
+          OnyxBypassThresholdSelector(
+            value: _thresholdPending ?? OnyxBackend.instance.bypassThreshold,
             enabled:
                 supported &&
                 snapshot.controlsAvailable &&
@@ -5772,7 +5762,7 @@ class _BypassChargingCardState extends State<_BypassChargingCard> {
                 _thresholdPending == null,
             onChanged: _setThreshold,
             onPreview: (threshold) {
-              RodinHaptics.frequentSegment();
+              OnyxHaptics.frequentSegment();
               setState(() => _thresholdPreview = threshold);
             },
             accent: accent,
@@ -5893,7 +5883,7 @@ class _BypassPowerPathPainter extends CustomPainter {
 class _ChargingBatteryCard extends StatelessWidget {
   const _ChargingBatteryCard({required this.snapshot});
 
-  final RodinBackendSnapshot snapshot;
+  final OnyxBackendSnapshot snapshot;
 
   static const Color accent = Color(0xFF35C997);
 
@@ -5911,7 +5901,7 @@ class _ChargingBatteryCard extends StatelessWidget {
   }
 
   String _wattage() {
-    final int milliwatts = RodinBackend.instance.chargingLiveMilliwatts;
+    final int milliwatts = OnyxBackend.instance.chargingLiveMilliwatts;
     if (snapshot.batteryStatus != 1 || milliwatts < 0) return '—';
     return '${(milliwatts / 1000).toStringAsFixed(1)} W';
   }
@@ -5919,7 +5909,7 @@ class _ChargingBatteryCard extends StatelessWidget {
   String _adapter() {
     final int selected = snapshot.chargingMode;
     if (selected > 0) return '$selected W';
-    final int watts = RodinBackend.instance.chargingAdapterWatts;
+    final int watts = OnyxBackend.instance.chargingAdapterWatts;
     return watts > 0 ? '$watts W' : 'Detecting';
   }
 
@@ -5928,14 +5918,14 @@ class _ChargingBatteryCard extends StatelessWidget {
 
   String _status() {
     if (snapshot.controlsAvailable &&
-        RodinBackend.instance.bypassChargingEnabled &&
-        RodinBackend.instance.bypassPhase == 4) {
+        OnyxBackend.instance.bypassChargingEnabled &&
+        OnyxBackend.instance.bypassPhase == 4) {
       return 'Direct power · Battery charging paused';
     }
-    if (RodinBackend.instance.bypassChargingEnabled) {
-      switch (RodinBackend.instance.bypassPhase) {
+    if (OnyxBackend.instance.bypassChargingEnabled) {
+      switch (OnyxBackend.instance.bypassPhase) {
         case 1:
-          return 'Charging to ${RodinBackend.instance.bypassThreshold}%';
+          return 'Charging to ${OnyxBackend.instance.bypassThreshold}%';
         case 3:
           return 'Charge pause requested · Power settling';
         case 5:
@@ -5992,8 +5982,8 @@ class _ChargingBatteryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
-    final bool bypassEnabled = RodinBackend.instance.bypassChargingEnabled;
-    final int bypassPhase = RodinBackend.instance.bypassPhase;
+    final bool bypassEnabled = OnyxBackend.instance.bypassChargingEnabled;
+    final int bypassPhase = OnyxBackend.instance.bypassPhase;
     final bool isBypass =
         snapshot.ready &&
         snapshot.serviceEnabled &&
@@ -6104,7 +6094,7 @@ class _ChargingBatteryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          Divider(height: 1, color: RodinSurfaceLines.divider(colors)),
+          Divider(height: 1, color: OnyxSurfaceLines.divider(colors)),
           const SizedBox(height: 12),
           Row(
             children: <Widget>[
@@ -6179,7 +6169,7 @@ class _ChargingMetric extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surfaceContainer.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: RodinSurfaceLines.inset(colors)),
+        border: Border.all(color: OnyxSurfaceLines.inset(colors)),
       ),
       child: Row(
         children: <Widget>[
@@ -6271,7 +6261,7 @@ String _chargingProfileDescription(int watts) => switch (watts) {
 class _ChargingModeCard extends StatefulWidget {
   const _ChargingModeCard({required this.snapshot});
 
-  final RodinBackendSnapshot snapshot;
+  final OnyxBackendSnapshot snapshot;
 
   @override
   State<_ChargingModeCard> createState() => _ChargingModeCardState();
@@ -6281,7 +6271,7 @@ class _ChargingModeCardState extends State<_ChargingModeCard> {
   static const Color accent = Color(0xFF35C997);
   int? _pendingProfile;
 
-  RodinBackendSnapshot get snapshot => widget.snapshot;
+  OnyxBackendSnapshot get snapshot => widget.snapshot;
 
   @override
   void didUpdateWidget(covariant _ChargingModeCard oldWidget) {
@@ -6295,10 +6285,10 @@ class _ChargingModeCardState extends State<_ChargingModeCard> {
 
   String _detail(int selected) {
     if (!snapshot.ready) return 'Charging backend unavailable';
-    if (!RodinBackend.instance.chargingControlSupported) {
+    if (!OnyxBackend.instance.chargingControlSupported) {
       return 'Onyx Essential FCC control is unavailable on this kernel';
     }
-    if (RodinBackend.instance.bypassChargingEnabled) {
+    if (OnyxBackend.instance.bypassChargingEnabled) {
       return 'Disable Bypass Charging to use charging profiles';
     }
     if (snapshot.chargingWriteState == 1) {
@@ -6315,18 +6305,18 @@ class _ChargingModeCardState extends State<_ChargingModeCard> {
   void _select(int profile) {
     final bool allowed =
         snapshot.controlsAvailable &&
-        RodinBackend.instance.chargingControlSupported &&
-        !RodinBackend.instance.bypassChargingEnabled &&
+        OnyxBackend.instance.chargingControlSupported &&
+        !OnyxBackend.instance.bypassChargingEnabled &&
         snapshot.chargingWriteState != 1;
     if (!allowed || profile == (_pendingProfile ?? snapshot.chargingMode)) {
       return;
     }
-    RodinHaptics.segment();
+    OnyxHaptics.segment();
     setState(() => _pendingProfile = profile);
-    if (!RodinBackend.instance.setChargingProfile(profile)) {
+    if (!OnyxBackend.instance.setChargingProfile(profile)) {
       setState(() => _pendingProfile = null);
-      RodinHaptics.reject();
-      RodinBackend.instance.refresh();
+      OnyxHaptics.reject();
+      OnyxBackend.instance.refresh();
     }
   }
 
@@ -6338,8 +6328,8 @@ class _ChargingModeCardState extends State<_ChargingModeCard> {
     final IconData profileIcon = _chargingProfileIcon(selected);
     final bool enabled =
         snapshot.controlsAvailable &&
-        RodinBackend.instance.chargingControlSupported &&
-        !RodinBackend.instance.bypassChargingEnabled &&
+        OnyxBackend.instance.chargingControlSupported &&
+        !OnyxBackend.instance.bypassChargingEnabled &&
         snapshot.chargingWriteState != 1;
 
     return SurfaceCard(
@@ -6411,7 +6401,7 @@ class _ChargingModeCardState extends State<_ChargingModeCard> {
             ],
           ),
           const SizedBox(height: 13),
-          if (RodinBackend.instance.bypassChargingEnabled) ...<Widget>[
+          if (OnyxBackend.instance.bypassChargingEnabled) ...<Widget>[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
@@ -6794,7 +6784,7 @@ class _ChargingPowerSpectrum extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surfaceContainer.withValues(alpha: 0.38),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: RodinSurfaceLines.inset(colors)),
+        border: Border.all(color: OnyxSurfaceLines.inset(colors)),
       ),
       child: Column(
         children: <Widget>[
@@ -6969,7 +6959,7 @@ class _TouchBoostScreenState extends State<TouchBoostScreen> {
   @override
   void initState() {
     super.initState();
-    RodinBackend.instance.refresh();
+    OnyxBackend.instance.refresh();
   }
 
   @override
@@ -6979,7 +6969,7 @@ class _TouchBoostScreenState extends State<TouchBoostScreen> {
   }
 
   bool _selectProfile(int profile) {
-    final bool accepted = RodinBackend.instance.setTouchProfile(profile);
+    final bool accepted = OnyxBackend.instance.setTouchProfile(profile);
     if (!accepted) {
       return false;
     }
@@ -6989,7 +6979,7 @@ class _TouchBoostScreenState extends State<TouchBoostScreen> {
     _pendingTimer = Timer(const Duration(milliseconds: 3400), () {
       if (!mounted) return;
       setState(() => _pendingProfile = null);
-      RodinBackend.instance.refresh();
+      OnyxBackend.instance.refresh();
     });
     return true;
   }
@@ -7025,8 +7015,8 @@ class _TouchBoostScreenState extends State<TouchBoostScreen> {
   @override
   Widget build(BuildContext context) {
     return _BackendSnapshotBuilder(
-      builder: (RodinBackendSnapshot snapshot) {
-        final RodinBackend backend = RodinBackend.instance;
+      builder: (OnyxBackendSnapshot snapshot) {
+        final OnyxBackend backend = OnyxBackend.instance;
         final int savedProfile =
             (1 <= snapshot.touchState && snapshot.touchState <= 3)
             ? snapshot.touchState
@@ -7055,7 +7045,7 @@ class _TouchBoostScreenState extends State<TouchBoostScreen> {
             snapshot.touchHal == 1 &&
             !snapshot.busy;
 
-        return RodinScrollPage(
+        return OnyxScrollPage(
           children: <Widget>[
             DetailHeader(title: 'Touch Response', onBack: widget.onBack),
             const SizedBox(height: 4),
@@ -7271,9 +7261,9 @@ class _TouchProfileTile extends StatelessWidget {
             ? () {
                 final bool accepted = onSelected(profile);
                 if (accepted) {
-                  RodinHaptics.segment();
+                  OnyxHaptics.segment();
                 } else {
-                  RodinHaptics.reject();
+                  OnyxHaptics.reject();
                 }
               }
             : null,
@@ -7365,8 +7355,8 @@ class _TouchProfileTile extends StatelessWidget {
   }
 }
 
-class RodinNestedBackController {
-  const RodinNestedBackController._();
+class OnyxNestedBackController {
+  const OnyxNestedBackController._();
 
   static Object? _owner;
   static bool Function()? _handler;
@@ -7421,18 +7411,18 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
   void initState() {
     super.initState();
 
-    RodinNestedBackController.attach(
+    OnyxNestedBackController.attach(
       this,
       _consumeNestedBack,
       canPreview: () => _showColourModes,
     );
 
-    RodinBackend.instance.refresh();
+    OnyxBackend.instance.refresh();
   }
 
   @override
   void dispose() {
-    RodinNestedBackController.detach(this);
+    OnyxNestedBackController.detach(this);
     super.dispose();
   }
 
@@ -7461,7 +7451,7 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
       return;
     }
 
-    RodinHaptics.back();
+    OnyxHaptics.back();
 
     setState(() {
       _colourTransitionForward = false;
@@ -7471,8 +7461,8 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
 
   Widget _buildColourModes(
     BuildContext context,
-    RodinBackendSnapshot snapshot,
-    RodinBackend backend,
+    OnyxBackendSnapshot snapshot,
+    OnyxBackend backend,
     int gamut,
     List<int> expert,
     bool expertEnabled,
@@ -7483,7 +7473,7 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
     final bool expertCalibrationEnabled =
         expertEnabled && snapshot.displayColor == 0;
 
-    return RodinScrollPage(
+    return OnyxScrollPage(
       children: <Widget>[
         DetailHeader(title: 'Colour modes', onBack: _closeColourModes),
         const SizedBox(height: 4),
@@ -7774,9 +7764,9 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
                   onPressed: expertCalibrationEnabled
                       ? () {
                           if (backend.resetExpertDisplay()) {
-                            RodinHaptics.confirm();
+                            OnyxHaptics.confirm();
                           } else {
-                            RodinHaptics.reject();
+                            OnyxHaptics.reject();
                           }
                         }
                       : null,
@@ -7793,15 +7783,15 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
 
   Widget _buildDisplayStudioRoot(
     BuildContext context,
-    RodinBackendSnapshot snapshot,
-    RodinBackend backend,
+    OnyxBackendSnapshot snapshot,
+    OnyxBackend backend,
     bool expertEnabled,
   ) {
     final ColorScheme colors = Theme.of(context).colorScheme;
 
     final Color accent = colors.primary;
 
-    return RodinScrollPage(
+    return OnyxScrollPage(
       children: <Widget>[
         DetailHeader(title: 'Display Studio', onBack: widget.onBack),
         const SizedBox(height: 4),
@@ -7895,8 +7885,8 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
   @override
   Widget build(BuildContext context) {
     return _BackendSnapshotBuilder(
-      builder: (RodinBackendSnapshot snapshot) {
-        final RodinBackend backend = RodinBackend.instance;
+      builder: (OnyxBackendSnapshot snapshot) {
+        final OnyxBackend backend = OnyxBackend.instance;
 
         final int gamut = backend.extendedValue(2);
 
@@ -7930,19 +7920,19 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
         return AnimatedSwitcher(
           duration: MediaQuery.disableAnimationsOf(context)
               ? Duration.zero
-              : RodinInteractionSettings.motionDuration(320),
+              : OnyxInteractionSettings.motionDuration(320),
           reverseDuration: MediaQuery.disableAnimationsOf(context)
               ? Duration.zero
-              : RodinInteractionSettings.motionDuration(220),
+              : OnyxInteractionSettings.motionDuration(220),
           layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
-            return rodinDetailLayout(
+            return onyxDetailLayout(
               currentChild,
               previousChildren,
               forward: _colourTransitionForward,
             );
           },
           transitionBuilder: (Widget child, Animation<double> animation) {
-            return RodinDetailTransition(
+            return OnyxDetailTransition(
               animation: animation,
               previewThrough: true,
               forward: _colourTransitionForward,
@@ -7962,7 +7952,7 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
                   ? 'display-studio-colour-modes'
                   : 'display-studio-root',
             ),
-            child: RodinPredictivePlane(
+            child: OnyxPredictivePlane(
               nested: true,
               destination: _showColourModes
                   ? _buildDisplayStudioRoot(
@@ -8000,7 +7990,7 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
   @override
   void initState() {
     super.initState();
-    RodinBackend.instance.refresh();
+    OnyxBackend.instance.refresh();
   }
 
   @override
@@ -8042,8 +8032,8 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
   }
 
   void _applyCorePreset(String name, List<int> onlineCores, Color accent) {
-    RodinHaptics.confirm();
-    final RodinBackend backend = RodinBackend.instance;
+    OnyxHaptics.confirm();
+    final OnyxBackend backend = OnyxBackend.instance;
     backend.setCpuManualMode(true);
     for (int i = 1; i <= 7; i++) {
       backend.setCpuCoreOnline(i, onlineCores.contains(i));
@@ -8063,8 +8053,8 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
     final bool isDark = theme.brightness == Brightness.dark;
 
     return _BackendSnapshotBuilder(
-      builder: (RodinBackendSnapshot s) {
-        final RodinBackend backend = RodinBackend.instance;
+      builder: (OnyxBackendSnapshot s) {
+        final OnyxBackend backend = OnyxBackend.instance;
         final int manual = backend.extendedValue(34);
         final int writeAck = backend.extendedValue(35);
         final int savedMask = backend.extendedValue(36);
@@ -8097,7 +8087,7 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
 
         return Stack(
           children: <Widget>[
-            RodinScrollPage(
+            OnyxScrollPage(
               children: <Widget>[
                 DetailHeader(
                   title: 'CPU Core & Frequency',
@@ -8234,92 +8224,23 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                SurfaceCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        'Xiaomi Sconfig',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: colors.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        backend.extendedValue(130) == 1
-                            ? 'Current: ${backend.extendedValue(131)} · Saved: ${backend.extendedValue(132) < 0 ? "OEM" : backend.extendedValue(132)} · Original: ${backend.extendedValue(133) == -2 ? "Not captured" : backend.extendedValue(133)}'
-                            : 'Sconfig unavailable on this vendor',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButton<int>(
-                        isExpanded: true,
-                        value:
-                            const <int>[
-                              -1,
-                              0,
-                              6,
-                              18,
-                              50,
-                              56,
-                              68,
-                            ].contains(backend.extendedValue(132))
-                            ? backend.extendedValue(132)
-                            : -1,
-                        items: const <DropdownMenuItem<int>>[
-                          DropdownMenuItem(
-                            value: -1,
-                            child: Text('OEM · restore captured original'),
-                          ),
-                          DropdownMenuItem(value: 0, child: Text('0 · Normal')),
-                          DropdownMenuItem(
-                            value: 6,
-                            child: Text('6 · NoLimits'),
-                          ),
-                          DropdownMenuItem(value: 18, child: Text('18 · Game')),
-                          DropdownMenuItem(
-                            value: 50,
-                            child: Text('50 · Performance Normal'),
-                          ),
-                          DropdownMenuItem(
-                            value: 56,
-                            child: Text('56 · Performance NoLimits'),
-                          ),
-                          DropdownMenuItem(
-                            value: 68,
-                            child: Text('68 · Performance Game'),
-                          ),
-                        ],
-                        onChanged: canWrite && backend.extendedValue(130) == 1
-                            ? (int? value) {
-                                if (value == null) return;
-                                backend.setExtendedOperation(32, value);
-                                _showGlassToast(
-                                  'SCONFIG REQUESTED',
-                                  value < 0
-                                      ? 'Restore captured OEM value'
-                                      : 'Xiaomi scenario $value',
-                                  Icons.tune_rounded,
-                                  const Color(0xFFFF9F68),
-                                );
-                              }
-                            : null,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Changes the Xiaomi thermal policy for CPU and GPU. NoLimits can increase heat and battery use. Scenario names come from stock XML; behavior depends on the vendor.',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
+                _OnyxSconfigCard(
+                  supported: backend.extendedValue(130) == 1,
+                  enabled: canWrite,
+                  current: backend.extendedValue(131),
+                  saved: backend.extendedValue(132),
+                  original: backend.extendedValue(133),
+                  onSelected: (int value) {
+                    backend.setExtendedOperation(32, value);
+                    _showGlassToast(
+                      'THERMAL POLICY REQUESTED',
+                      value < 0
+                          ? 'Restore captured OEM value'
+                          : 'Xiaomi scenario $value',
+                      Icons.thermostat_rounded,
+                      const Color(0xFFFF9F68),
+                    );
+                  },
                 ),
                 const SizedBox(height: 12),
 
@@ -8425,7 +8346,7 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
                   enabled: canWrite,
                   stateKnown: manual >= 0,
                   onChanged: (bool val) {
-                    RodinHaptics.toggle(val);
+                    OnyxHaptics.toggle(val);
                     return backend.setCpuManualMode(val);
                   },
                 ),
@@ -8556,7 +8477,7 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
                           onChanged: cpu == 0
                               ? null
                               : (bool online) {
-                                  RodinHaptics.toggle(online);
+                                  OnyxHaptics.toggle(online);
                                   backend.setCpuCoreOnline(cpu, online);
                                 },
                         ),
@@ -8621,7 +8542,7 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
                           clusterTag: 'PERFORMANCE',
                           toggleEnabled: manual == 1 && canWrite,
                           onChanged: (bool online) {
-                            RodinHaptics.toggle(online);
+                            OnyxHaptics.toggle(online);
                             backend.setCpuCoreOnline(cpu, online);
                           },
                         ),
@@ -8685,7 +8606,7 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
                         clusterTag: 'PRIME',
                         toggleEnabled: manual == 1 && canWrite,
                         onChanged: (bool online) {
-                          RodinHaptics.toggle(online);
+                          OnyxHaptics.toggle(online);
                           backend.setCpuCoreOnline(7, online);
                         },
                       ),
@@ -8755,13 +8676,13 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
               ],
             ),
 
-            RodinFeedbackOverlay(
+            OnyxFeedbackOverlay(
               tag: _toastTag,
               message: _toastMessage,
               icon: _toastIcon,
               accent: _toastAccent,
               visible: _toastVisible,
-              duration: RodinInteractionSettings.motionDuration(260),
+              duration: OnyxInteractionSettings.motionDuration(260),
             ),
           ],
         );
@@ -8882,6 +8803,354 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _OnyxSconfigCard extends StatefulWidget {
+  const _OnyxSconfigCard({
+    required this.supported,
+    required this.enabled,
+    required this.current,
+    required this.saved,
+    required this.original,
+    required this.onSelected,
+  });
+  final bool supported;
+  final bool enabled;
+  final int current;
+  final int saved;
+  final int original;
+  final ValueChanged<int> onSelected;
+  @override
+  State<_OnyxSconfigCard> createState() => _OnyxSconfigCardState();
+}
+
+class _OnyxSconfigCardState extends State<_OnyxSconfigCard> {
+  static const Color _accent = Color(0xFFFF9F68);
+  late bool _performance;
+  @override
+  void initState() {
+    super.initState();
+    _performance = _isPerformance(widget.saved);
+  }
+
+  @override
+  void didUpdateWidget(covariant _OnyxSconfigCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.saved != widget.saved)
+      _performance = _isPerformance(widget.saved);
+  }
+
+  bool _isPerformance(int mode) => const <int>{50, 56, 68}.contains(mode);
+  String _name(int mode) => switch (mode) {
+    -2 => 'Not captured',
+    -1 => 'Automatic',
+    0 => 'Normal',
+    6 => 'NoLimits',
+    18 => 'Game',
+    50 => 'Perf. Normal',
+    56 => 'Perf. NoLimits',
+    68 => 'Perf. Game',
+    _ => 'Scenario $mode',
+  };
+  void _select(int mode) {
+    if (!widget.enabled || !widget.supported) return;
+    OnyxHaptics.confirm();
+    widget.onSelected(mode);
+  }
+
+  Widget _stat(String label, String value, ColorScheme colors) => Expanded(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.7,
+            color: colors.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          value,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: colors.onSurface,
+          ),
+        ),
+      ],
+    ),
+  );
+  Widget _mode(
+    int code,
+    String title,
+    String subtitle,
+    IconData icon,
+    Color accent,
+  ) {
+    final ColorScheme colors = Theme.of(context).colorScheme;
+    final bool selected = widget.saved == code;
+    final bool live = widget.current == code;
+    final bool enabled = widget.enabled && widget.supported;
+    return Expanded(
+      child: Opacity(
+        opacity: enabled ? 1 : 0.45,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: enabled ? () => _select(code) : null,
+            borderRadius: BorderRadius.circular(14),
+            child: AnimatedContainer(
+              duration: OnyxInteractionSettings.motionDuration(180),
+              padding: const EdgeInsets.fromLTRB(11, 12, 9, 12),
+              decoration: BoxDecoration(
+                color: selected
+                    ? accent.withValues(alpha: 0.12)
+                    : colors.surfaceContainer.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: selected
+                      ? accent.withValues(alpha: 0.65)
+                      : colors.outline.withValues(alpha: 0.28),
+                  width: selected ? 1.4 : 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Icon(
+                        icon,
+                        size: 20,
+                        color: selected ? accent : colors.onSurfaceVariant,
+                      ),
+                      const Spacer(),
+                      if (selected)
+                        Icon(
+                          Icons.check_circle_rounded,
+                          size: 15,
+                          color: accent,
+                        )
+                      else if (live)
+                        Icon(Icons.circle, size: 7, color: accent),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: selected ? accent : colors.onSurface,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                  Text(
+                    live ? 'CURRENT · $code' : 'MODE $code',
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      letterSpacing: 0.3,
+                      fontWeight: FontWeight.w800,
+                      color: live ? accent : colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme colors = Theme.of(context).colorScheme;
+    final bool enabled = widget.enabled && widget.supported;
+    final bool followsOem = widget.saved < 0;
+    final bool matches = !followsOem && widget.saved == widget.current;
+    final String status = !widget.supported
+        ? 'UNAVAILABLE'
+        : followsOem
+        ? 'OEM'
+        : matches
+        ? 'ACTIVE'
+        : 'REQUESTED';
+    return SurfaceCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              const IconTile(
+                icon: Icons.thermostat_rounded,
+                accent: _accent,
+                size: 42,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    const Text(
+                      'Thermal policy',
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Xiaomi Sconfig · CPU + GPU',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              StatusPill(
+                label: status,
+                accent: matches
+                    ? const Color(0xFF46CFA1)
+                    : followsOem
+                    ? colors.onSurfaceVariant
+                    : _accent,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _accent.withValues(alpha: 0.065),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _accent.withValues(alpha: 0.16)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                _stat(
+                  'CURRENT',
+                  widget.supported ? _name(widget.current) : 'Unavailable',
+                  colors,
+                ),
+                const SizedBox(width: 8),
+                _stat(
+                  'SAVED',
+                  followsOem ? 'OEM control' : _name(widget.saved),
+                  colors,
+                ),
+                const SizedBox(width: 8),
+                _stat('ORIGINAL', _name(widget.original), colors),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _CpuModeButton(
+                  label: 'Standard',
+                  icon: Icons.tune_rounded,
+                  selected: !_performance,
+                  accent: _accent,
+                  enabled: enabled,
+                  onTap: () => setState(() => _performance = false),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _CpuModeButton(
+                  label: 'Performance',
+                  icon: Icons.speed_rounded,
+                  selected: _performance,
+                  accent: _accent,
+                  enabled: enabled,
+                  onTap: () => setState(() => _performance = true),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              _mode(
+                _performance ? 50 : 0,
+                'Normal',
+                'Daily use',
+                Icons.eco_rounded,
+                const Color(0xFF46CFA1),
+              ),
+              const SizedBox(width: 8),
+              _mode(
+                _performance ? 68 : 18,
+                'Game',
+                'Game scenario',
+                Icons.sports_esports_rounded,
+                const Color(0xFFFFB84D),
+              ),
+              const SizedBox(width: 8),
+              _mode(
+                _performance ? 56 : 6,
+                'NoLimits',
+                'Vendor scenario',
+                Icons.bolt_rounded,
+                const Color(0xFFFF6464),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: enabled ? () => _select(-1) : null,
+              icon: const Icon(Icons.restore_rounded, size: 16),
+              label: const Text('Restore original · OEM control'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: colors.onSurfaceVariant,
+                side: BorderSide(color: colors.outline.withValues(alpha: 0.35)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 11),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'NoLimits can increase heat and power use. Mode names follow your stock vendor configuration.',
+            style: TextStyle(
+              fontSize: 10.5,
+              height: 1.4,
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -9008,7 +9277,7 @@ class _CpuFrequencyCardState extends State<_CpuFrequencyCard> {
 
   void _setExactLock(bool lock) {
     if (_exactLock == lock || widget.availableMhz.isEmpty) return;
-    RodinHaptics.segment();
+    OnyxHaptics.segment();
     setState(() {
       _exactLock = lock;
       if (lock) {
@@ -9029,21 +9298,21 @@ class _CpuFrequencyCardState extends State<_CpuFrequencyCard> {
         widget.availableMhz.isEmpty ||
         _minimumMhz <= 0 ||
         _maximumMhz <= 0) {
-      RodinHaptics.reject();
+      OnyxHaptics.reject();
       return;
     }
 
-    final bool accepted = RodinBackend.instance.setCpuClusterFreqRange(
+    final bool accepted = OnyxBackend.instance.setCpuClusterFreqRange(
       widget.policy,
       _minimumMhz,
       _maximumMhz,
     );
     if (!accepted) {
-      RodinHaptics.reject();
+      OnyxHaptics.reject();
       return;
     }
 
-    RodinHaptics.confirm();
+    OnyxHaptics.confirm();
     setState(() => _dirty = false);
     widget.onFeedback(
       _exactLock ? 'EXACT LOCK REQUESTED' : 'FREQUENCY RANGE REQUESTED',
@@ -9057,19 +9326,19 @@ class _CpuFrequencyCardState extends State<_CpuFrequencyCard> {
 
   void _reset() {
     if (!widget.enabled) {
-      RodinHaptics.reject();
+      OnyxHaptics.reject();
       return;
     }
 
-    final bool accepted = RodinBackend.instance.resetCpuClusterFreqRange(
+    final bool accepted = OnyxBackend.instance.resetCpuClusterFreqRange(
       widget.policy,
     );
     if (!accepted) {
-      RodinHaptics.reject();
+      OnyxHaptics.reject();
       return;
     }
 
-    RodinHaptics.confirm();
+    OnyxHaptics.confirm();
     setState(() {
       _dirty = false;
       _exactLock = false;
@@ -9278,7 +9547,7 @@ class _CpuFrequencyCardState extends State<_CpuFrequencyCard> {
                         label: _frequencyLabel(_maximumMhz),
                         activeColor: widget.accent,
                         onChangeStart: widget.enabled
-                            ? (_) => RodinHaptics.segment()
+                            ? (_) => OnyxHaptics.segment()
                             : null,
                         onChanged: widget.enabled
                             ? (double value) {
@@ -9290,11 +9559,11 @@ class _CpuFrequencyCardState extends State<_CpuFrequencyCard> {
                                   _maximumMhz = target;
                                   _dirty = true;
                                 });
-                                RodinHaptics.frequentSegment();
+                                OnyxHaptics.frequentSegment();
                               }
                             : null,
                         onChangeEnd: widget.enabled
-                            ? (_) => RodinHaptics.confirm()
+                            ? (_) => OnyxHaptics.confirm()
                             : null,
                       ),
                     ],
@@ -9323,7 +9592,7 @@ class _CpuFrequencyCardState extends State<_CpuFrequencyCard> {
                         ),
                         activeColor: widget.accent,
                         onChangeStart: widget.enabled
-                            ? (_) => RodinHaptics.segment()
+                            ? (_) => OnyxHaptics.segment()
                             : null,
                         onChanged: widget.enabled
                             ? (RangeValues values) {
@@ -9340,11 +9609,11 @@ class _CpuFrequencyCardState extends State<_CpuFrequencyCard> {
                                   _maximumMhz = maximum;
                                   _dirty = true;
                                 });
-                                RodinHaptics.frequentSegment();
+                                OnyxHaptics.frequentSegment();
                               }
                             : null,
                         onChangeEnd: widget.enabled
-                            ? (_) => RodinHaptics.confirm()
+                            ? (_) => OnyxHaptics.confirm()
                             : null,
                       ),
                     ],
@@ -9586,7 +9855,7 @@ class _AdvancedConfigurationScreenState
   @override
   void initState() {
     super.initState();
-    RodinBackend.instance.refresh();
+    OnyxBackend.instance.refresh();
   }
 
   @override
@@ -9608,14 +9877,14 @@ class _AdvancedConfigurationScreenState
     ];
 
     return _BackendSnapshotBuilder(
-      builder: (RodinBackendSnapshot snapshot) {
-        final RodinBackend backend = RodinBackend.instance;
+      builder: (OnyxBackendSnapshot snapshot) {
+        final OnyxBackend backend = OnyxBackend.instance;
         final int drift0 = backend.extendedValue(14);
         final int drift4 = backend.extendedValue(15);
         final int drift7 = backend.extendedValue(16);
         final int ioDrift = backend.extendedValue(18);
 
-        return RodinScrollPage(
+        return OnyxScrollPage(
           children: <Widget>[
             DetailHeader(
               title: 'Advanced Configuration',
@@ -9753,11 +10022,11 @@ class _ResolutionScreenState extends State<ResolutionScreen> {
   @override
   void initState() {
     super.initState();
-    RodinBackend.instance.refresh();
+    OnyxBackend.instance.refresh();
   }
 
   void _applyResolution(int width, int height, int density, String label) {
-    final RodinBackend backend = RodinBackend.instance;
+    final OnyxBackend backend = OnyxBackend.instance;
     backend.haptic(2);
     setState(() => _applying = true);
 
@@ -9783,7 +10052,7 @@ class _ResolutionScreenState extends State<ResolutionScreen> {
             elevation: 0,
             padding: EdgeInsets.zero,
             margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            content: RodinFeedbackCard(
+            content: OnyxFeedbackCard(
               tag: 'RESOLUTION',
               icon: Icons.check_circle_rounded,
               accent: const Color(0xFFFFBE63),
@@ -9804,8 +10073,8 @@ class _ResolutionScreenState extends State<ResolutionScreen> {
     final bool dark = Theme.of(context).brightness == Brightness.dark;
 
     return _BackendSnapshotBuilder(
-      builder: (RodinBackendSnapshot snapshot) {
-        final RodinBackend backend = RodinBackend.instance;
+      builder: (OnyxBackendSnapshot snapshot) {
+        final OnyxBackend backend = OnyxBackend.instance;
         final int activeWidth = backend.extendedValue(22);
         final int activeHeight = backend.extendedValue(23);
         final int hzX10 = backend.extendedValue(24);
@@ -9861,7 +10130,7 @@ class _ResolutionScreenState extends State<ResolutionScreen> {
             height: 2712,
             density: nativeDensity,
             aspectRatio: '20:9',
-            description: 'Rodin physical hardware panel resolution. Maximum sharpness and true 1:1 pixel rendering with zero scaling.',
+            description: 'Onyx physical hardware panel resolution. Maximum sharpness and true 1:1 pixel rendering with zero scaling.',
             accentColor: const Color(0xFF59BCFF),
             icon: Icons.auto_awesome_rounded,
             isActive: isNative,
@@ -9907,12 +10176,12 @@ class _ResolutionScreenState extends State<ResolutionScreen> {
           ),
         ];
 
-        return RodinScrollPage(
+        return OnyxScrollPage(
           children: <Widget>[
             DetailHeader(title: 'Resolution', onBack: widget.onBack),
             const SizedBox(height: 4),
             Text(
-              'ROM-aware resolution and logical-density scaling for Rodin (1220×2712 1.5K AMOLED)',
+              'ROM-aware resolution and logical-density scaling for Onyx (1220×2712 1.5K AMOLED)',
               style: TextStyle(fontSize: 13.5, color: colors.onSurfaceVariant),
             ),
             const SizedBox(height: 12),
@@ -9963,7 +10232,7 @@ class _ResolutionScreenState extends State<ResolutionScreen> {
                             const SizedBox(height: 2),
                             Text(
                               isNative
-                                  ? 'Rodin 1.5K AMOLED Native (1:1 Map)'
+                                  ? 'Onyx 1.5K AMOLED Native (1:1 Map)'
                                   : isFhd
                                   ? 'FHD+ High Performance Mode'
                                   : isHd
@@ -10081,7 +10350,7 @@ class _ResolutionScreenState extends State<ResolutionScreen> {
               runSpacing: 6,
               children: <Widget>[
                 const Text(
-                  'RODIN PRESET MAPPINGS',
+                  'ONYX PRESET MAPPINGS',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w900,
@@ -10220,7 +10489,7 @@ class _ResolutionScreenState extends State<ResolutionScreen> {
                     max: 1440,
                     divisions: 72,
                     activeColor: accent,
-                    onChangeStart: (_) => RodinHaptics.segment(),
+                    onChangeStart: (_) => OnyxHaptics.segment(),
                     onChanged: (double val) {
                       final int w = val.round();
                       setState(() {
@@ -10230,9 +10499,9 @@ class _ResolutionScreenState extends State<ResolutionScreen> {
                           _customDensity = _densityForWidth(nativeDensity, w);
                         }
                       });
-                      RodinHaptics.frequentSegment();
+                      OnyxHaptics.frequentSegment();
                     },
-                    onChangeEnd: (_) => RodinHaptics.confirm(),
+                    onChangeEnd: (_) => OnyxHaptics.confirm(),
                   ),
 
                   // Height Slider
@@ -10266,16 +10535,16 @@ class _ResolutionScreenState extends State<ResolutionScreen> {
                     activeColor: accent,
                     onChangeStart: _lockAspectRatio
                         ? null
-                        : (_) => RodinHaptics.segment(),
+                        : (_) => OnyxHaptics.segment(),
                     onChanged: _lockAspectRatio
                         ? null
                         : (double val) {
                             setState(() => _customHeight = val.round());
-                            RodinHaptics.frequentSegment();
+                            OnyxHaptics.frequentSegment();
                           },
                     onChangeEnd: _lockAspectRatio
                         ? null
-                        : (_) => RodinHaptics.confirm(),
+                        : (_) => OnyxHaptics.confirm(),
                   ),
 
                   // Density Slider
@@ -10310,12 +10579,12 @@ class _ResolutionScreenState extends State<ResolutionScreen> {
                     max: densityMax.toDouble(),
                     divisions: (densityMax - 160) ~/ 5,
                     activeColor: accent,
-                    onChangeStart: (_) => RodinHaptics.segment(),
+                    onChangeStart: (_) => OnyxHaptics.segment(),
                     onChanged: (double val) {
                       setState(() => _customDensity = val.round());
-                      RodinHaptics.frequentSegment();
+                      OnyxHaptics.frequentSegment();
                     },
-                    onChangeEnd: (_) => RodinHaptics.confirm(),
+                    onChangeEnd: (_) => OnyxHaptics.confirm(),
                   ),
 
                   const SizedBox(height: 6),
@@ -10362,7 +10631,7 @@ class _ResolutionScreenState extends State<ResolutionScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   const Text(
-                    'Rodin Display Architecture',
+                    'Onyx Display Architecture',
                     style: TextStyle(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w800,
@@ -10674,8 +10943,8 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
   @override
   void initState() {
     super.initState();
-    RodinBackend.instance.refresh();
-    final int currentSize = RodinBackend.instance.extendedValue(39);
+    OnyxBackend.instance.refresh();
+    final int currentSize = OnyxBackend.instance.extendedValue(39);
     final int activeSize = currentSize >= 0 ? currentSize : 8192;
     _customSliderMb = activeSize;
     const List<int> standardPresets = <int>[0, 4096, 8192, 12288, 16384];
@@ -10710,7 +10979,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
   }
 
   void _applyPresetSize(int sizeMb, String title, IconData icon, Color accent) {
-    RodinHaptics.confirm();
+    OnyxHaptics.confirm();
     setState(() {
       _isCustomMode = false;
       _optimisticSizeMb = sizeMb;
@@ -10718,7 +10987,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
       _applying = true;
     });
 
-    final bool applied = RodinBackend.instance.setZramSize(sizeMb);
+    final bool applied = OnyxBackend.instance.setZramSize(sizeMb);
     if (!applied) {
       setState(() {
         _optimisticSizeMb = null;
@@ -10730,7 +10999,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
         Icons.error_rounded,
         const Color(0xFFFF5A64),
       );
-      RodinBackend.instance.refresh();
+      OnyxBackend.instance.refresh();
       return;
     }
     _showGlassToast(
@@ -10742,7 +11011,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
       accent,
     );
     Future<void>.delayed(const Duration(milliseconds: 400), () {
-      RodinBackend.instance.refresh();
+      OnyxBackend.instance.refresh();
       if (mounted) {
         setState(() => _applying = false);
       }
@@ -10750,7 +11019,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
   }
 
   void _applyCustomSize(int sizeMb) {
-    RodinHaptics.confirm();
+    OnyxHaptics.confirm();
     setState(() {
       _isCustomMode = true;
       _optimisticSizeMb = sizeMb;
@@ -10758,7 +11027,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
       _applying = true;
     });
 
-    final bool applied = RodinBackend.instance.setZramSize(sizeMb);
+    final bool applied = OnyxBackend.instance.setZramSize(sizeMb);
     if (!applied) {
       setState(() {
         _optimisticSizeMb = null;
@@ -10770,7 +11039,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
         Icons.error_rounded,
         const Color(0xFFFF5A64),
       );
-      RodinBackend.instance.refresh();
+      OnyxBackend.instance.refresh();
       return;
     }
     _showGlassToast(
@@ -10782,7 +11051,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
       const Color(0xFF67C2FF),
     );
     Future<void>.delayed(const Duration(milliseconds: 400), () {
-      RodinBackend.instance.refresh();
+      OnyxBackend.instance.refresh();
       if (mounted) {
         setState(() => _applying = false);
       }
@@ -10790,7 +11059,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
   }
 
   void _applyAlgorithm(int algCode) {
-    RodinHaptics.confirm();
+    OnyxHaptics.confirm();
     setState(() => _optimisticAlgCode = algCode);
 
     final List<String> algNames = <String>['LZ4', 'ZSTD', 'LZO-RLE', 'LZO'];
@@ -10798,7 +11067,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
         ? algNames[algCode]
         : 'LZ4';
 
-    final bool applied = RodinBackend.instance.setZramAlgorithm(algCode);
+    final bool applied = OnyxBackend.instance.setZramAlgorithm(algCode);
     if (!applied) {
       setState(() => _optimisticAlgCode = null);
       _showGlassToast(
@@ -10807,7 +11076,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
         Icons.error_rounded,
         const Color(0xFFFF5A64),
       );
-      RodinBackend.instance.refresh();
+      OnyxBackend.instance.refresh();
       return;
     }
     _showGlassToast(
@@ -10817,15 +11086,15 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
       const Color(0xFF41C98A),
     );
     Future<void>.delayed(const Duration(milliseconds: 400), () {
-      RodinBackend.instance.refresh();
+      OnyxBackend.instance.refresh();
     });
   }
 
   void _applySwappiness(int swappiness) {
-    RodinHaptics.confirm();
+    OnyxHaptics.confirm();
     setState(() => _optimisticSwappiness = swappiness);
 
-    final bool applied = RodinBackend.instance.setZramSwappiness(swappiness);
+    final bool applied = OnyxBackend.instance.setZramSwappiness(swappiness);
     if (!applied) {
       setState(() => _optimisticSwappiness = null);
       _showGlassToast(
@@ -10834,7 +11103,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
         Icons.error_rounded,
         const Color(0xFFFF5A64),
       );
-      RodinBackend.instance.refresh();
+      OnyxBackend.instance.refresh();
       return;
     }
     _showGlassToast(
@@ -10843,12 +11112,12 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
       Icons.speed_rounded,
       const Color(0xFFFFB84D),
     );
-    RodinBackend.instance.refresh();
+    OnyxBackend.instance.refresh();
   }
 
   void _compactMemory() {
     if (_compacting) return;
-    RodinHaptics.confirm();
+    OnyxHaptics.confirm();
     setState(() => _compacting = true);
 
     _showGlassToast(
@@ -10858,9 +11127,9 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
       const Color(0xFF74E6C6),
     );
 
-    RodinBackend.instance.compactZram();
+    OnyxBackend.instance.compactZram();
     Future<void>.delayed(const Duration(milliseconds: 600), () {
-      RodinBackend.instance.refresh();
+      OnyxBackend.instance.refresh();
       if (mounted) {
         setState(() => _compacting = false);
         _showGlassToast(
@@ -10874,7 +11143,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
   }
 
   void _resetDefaults() {
-    RodinHaptics.confirm();
+    OnyxHaptics.confirm();
     setState(() {
       _isCustomMode = false;
       _optimisticSizeMb = 8192;
@@ -10883,9 +11152,9 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
       _customSliderMb = 8192;
     });
 
-    final bool swappinessApplied = RodinBackend.instance.setZramSwappiness(100);
-    final bool algorithmApplied = RodinBackend.instance.setZramAlgorithm(0);
-    final bool sizeApplied = RodinBackend.instance.setZramSize(8192);
+    final bool swappinessApplied = OnyxBackend.instance.setZramSwappiness(100);
+    final bool algorithmApplied = OnyxBackend.instance.setZramAlgorithm(0);
+    final bool sizeApplied = OnyxBackend.instance.setZramSize(8192);
     if (!swappinessApplied || !algorithmApplied || !sizeApplied) {
       setState(() {
         _optimisticSizeMb = null;
@@ -10898,7 +11167,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
         Icons.error_rounded,
         const Color(0xFFFF5A64),
       );
-      RodinBackend.instance.refresh();
+      OnyxBackend.instance.refresh();
       return;
     }
     _showGlassToast(
@@ -10908,7 +11177,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
       const Color(0xFF41C98A),
     );
     Future<void>.delayed(const Duration(milliseconds: 500), () {
-      RodinBackend.instance.refresh();
+      OnyxBackend.instance.refresh();
     });
   }
 
@@ -10921,8 +11190,8 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
         : const Color(0xFF0077E6);
 
     return _BackendSnapshotBuilder(
-      builder: (RodinBackendSnapshot snapshot) {
-        final RodinBackend backend = RodinBackend.instance;
+      builder: (OnyxBackendSnapshot snapshot) {
+        final OnyxBackend backend = OnyxBackend.instance;
         final int rawSizeMb = backend.extendedValue(39);
         final int activeSizeMb =
             _optimisticSizeMb ?? (rawSizeMb >= 0 ? rawSizeMb : 8192);
@@ -10982,7 +11251,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
             title: '8 GB (Stock Optimal)',
             badge: '8 GB DEFAULT',
             sizeMb: 8192,
-            description: 'Recommended factory configuration for Rodin. Perfect balance of multitasking speed and battery life.',
+            description: 'Recommended factory configuration for Onyx. Perfect balance of multitasking speed and battery life.',
             accentColor: const Color(0xFF41C98A),
             icon: Icons.verified_rounded,
             isActive: !_isCustomMode && activeSizeMb == 8192,
@@ -11009,7 +11278,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
 
         return Stack(
           children: <Widget>[
-            RodinScrollPage(
+            OnyxScrollPage(
               children: <Widget>[
                 DetailHeader(
                   title: 'ZRAM & Swap Manager',
@@ -11017,7 +11286,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Hardware memory compression, swap sizing, and kernel swappiness tuning for Rodin',
+                  'Hardware memory compression, swap sizing, and kernel swappiness tuning for Onyx',
                   style: TextStyle(
                     fontSize: 13.5,
                     color: colors.onSurfaceVariant,
@@ -11258,16 +11527,16 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
                         max: 25600,
                         divisions: 25,
                         activeColor: accent,
-                        onChangeStart: (_) => RodinHaptics.segment(),
+                        onChangeStart: (_) => OnyxHaptics.segment(),
                         onChanged: (double val) {
                           setState(() {
                             _customSliderMb = val.round();
                             _isCustomMode = true;
                           });
-                          RodinHaptics.frequentSegment();
+                          OnyxHaptics.frequentSegment();
                         },
                         onChangeEnd: (double val) {
-                          RodinHaptics.confirm();
+                          OnyxHaptics.confirm();
                           _applyCustomSize(val.round());
                         },
                       ),
@@ -11420,10 +11689,10 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
                         max: 200,
                         divisions: 40,
                         activeColor: const Color(0xFFFFB84D),
-                        onChangeStart: (_) => RodinHaptics.segment(),
+                        onChangeStart: (_) => OnyxHaptics.segment(),
                         onChanged: (double val) {
                           setState(() => _optimisticSwappiness = val.round());
-                          RodinHaptics.frequentSegment();
+                          OnyxHaptics.frequentSegment();
                         },
                         onChangeEnd: (double val) =>
                             _applySwappiness(val.round()),
@@ -11535,13 +11804,13 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
             ),
 
             // FROSTED GLASS HUD TOAST
-            RodinFeedbackOverlay(
+            OnyxFeedbackOverlay(
               tag: _toastTag,
               message: _toastMessage,
               icon: _toastIcon,
               accent: _toastAccent,
               visible: _toastVisible,
-              duration: RodinInteractionSettings.motionDuration(260),
+              duration: OnyxInteractionSettings.motionDuration(260),
             ),
           ],
         );
@@ -11889,7 +12158,7 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
   @override
   void initState() {
     super.initState();
-    RodinBackend.instance.refresh();
+    OnyxBackend.instance.refresh();
   }
 
   @override
@@ -11931,7 +12200,7 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
     IconData icon,
     Color accent,
   ) {
-    RodinHaptics.confirm();
+    OnyxHaptics.confirm();
     final bool willUncap = profileCode == 3;
 
     setState(() {
@@ -11953,11 +12222,11 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
       accent,
     );
 
-    RodinBackend.instance.setPerformanceProfile(profileCode);
+    OnyxBackend.instance.setPerformanceProfile(profileCode);
 
     _interactionTimer?.cancel();
     _interactionTimer = Timer(const Duration(milliseconds: 600), () {
-      RodinBackend.instance.refresh();
+      OnyxBackend.instance.refresh();
       if (mounted) {
         setState(() {
           _optimisticProfile = null;
@@ -11973,7 +12242,7 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
   }
 
   void _applyPowerPolicy(int policyCode) {
-    RodinHaptics.confirm();
+    OnyxHaptics.confirm();
     setState(() => _optimisticPowerPolicy = policyCode);
 
     final String name = policyCode == 1
@@ -11986,9 +12255,9 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
       policyCode == 1 ? const Color(0xFFFF5252) : const Color(0xFF67C2FF),
     );
 
-    RodinBackend.instance.setGpuPowerPolicy(policyCode);
+    OnyxBackend.instance.setGpuPowerPolicy(policyCode);
     Future<void>.delayed(const Duration(milliseconds: 500), () {
-      RodinBackend.instance.refresh();
+      OnyxBackend.instance.refresh();
       if (mounted) {
         setState(() => _optimisticPowerPolicy = null);
       }
@@ -11996,7 +12265,7 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
   }
 
   void _applyGovernor(int govCode) {
-    RodinHaptics.confirm();
+    OnyxHaptics.confirm();
     setState(() => _optimisticGov = govCode);
 
     const List<String> names = <String>[
@@ -12017,9 +12286,9 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
       const Color(0xFF67C2FF),
     );
 
-    RodinBackend.instance.setGpuDevfreqGovernor(govCode);
+    OnyxBackend.instance.setGpuDevfreqGovernor(govCode);
     Future<void>.delayed(const Duration(milliseconds: 500), () {
-      RodinBackend.instance.refresh();
+      OnyxBackend.instance.refresh();
       if (mounted) {
         setState(() => _optimisticGov = null);
       }
@@ -12027,7 +12296,7 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
   }
 
   void _resetDefault() {
-    RodinHaptics.confirm();
+    OnyxHaptics.confirm();
     setState(() {
       _optimisticProfile = 0;
       _optimisticUncap = false;
@@ -12046,9 +12315,9 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
       const Color(0xFF67C2FF),
     );
 
-    RodinBackend.instance.setPerformanceProfile(0);
+    OnyxBackend.instance.setPerformanceProfile(0);
     Future<void>.delayed(const Duration(milliseconds: 600), () {
-      RodinBackend.instance.refresh();
+      OnyxBackend.instance.refresh();
       if (mounted) {
         setState(() {
           _optimisticProfile = null;
@@ -12069,8 +12338,8 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
     final ColorScheme colors = Theme.of(context).colorScheme;
 
     return _BackendSnapshotBuilder(
-      builder: (RodinBackendSnapshot snapshot) {
-        final RodinBackend backend = RodinBackend.instance;
+      builder: (OnyxBackendSnapshot snapshot) {
+        final OnyxBackend backend = OnyxBackend.instance;
 
         // Telemetry Slots
         final int liveLoad = backend.extendedValue(45) >= 0
@@ -12162,7 +12431,7 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
 
         return Stack(
           children: <Widget>[
-            RodinScrollPage(
+            OnyxScrollPage(
               children: <Widget>[
                 DetailHeader(
                   title: 'Adreno GPU & KGSL',
@@ -12263,13 +12532,13 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
             ),
 
             // FROSTED GLASS HUD TOAST (BOTTOM POSITIONED)
-            RodinFeedbackOverlay(
+            OnyxFeedbackOverlay(
               tag: _toastTag,
               message: _toastMessage,
               icon: _toastIcon,
               accent: _toastAccent,
               visible: _toastVisible,
-              duration: RodinInteractionSettings.motionDuration(260),
+              duration: OnyxInteractionSettings.motionDuration(260),
             ),
           ],
         );
@@ -12921,7 +13190,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   @override
   void initState() {
     super.initState();
-    RodinBackend.instance.refresh();
+    OnyxBackend.instance.refresh();
   }
 
   @override
@@ -12929,8 +13198,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
     const Color accent = Color(0xFF74E6C6);
 
     return _BackendSnapshotBuilder(
-      builder: (RodinBackendSnapshot snapshot) {
-        final RodinBackend backend = RodinBackend.instance;
+      builder: (OnyxBackendSnapshot snapshot) {
+        final OnyxBackend backend = OnyxBackend.instance;
         final int phase = backend.extendedValue(0);
         final int perfSupported = backend.extendedValue(11);
         final int perfVerified = backend.extendedValue(12);
@@ -12954,7 +13223,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
         final bool noKnownDrift =
             knownDrifts.isEmpty || knownDrifts.every((int value) => value == 0);
 
-        return RodinScrollPage(
+        return OnyxScrollPage(
           children: <Widget>[
             DetailHeader(title: 'Diagnostics', onBack: widget.onBack),
             const SizedBox(height: 4),
@@ -12973,7 +13242,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                   ? 'Onyx Essential Disabled'
                   : snapshot.ready
                   ? 'System Health Normal'
-                  : snapshot.connection == RodinConnectionState.connecting
+                  : snapshot.connection == OnyxConnectionState.connecting
                   ? 'Connecting to System Service'
                   : 'System Service Unavailable',
               subtitle: snapshot.ready && !snapshot.serviceEnabled
@@ -13171,7 +13440,7 @@ class _ExpertSliderRowState extends State<_ExpertSliderRow> {
     _lastHapticBucket = _hapticBucket(rounded);
     _lastSendAt = DateTime.now();
 
-    RodinHaptics.segment();
+    OnyxHaptics.segment();
   }
 
   void _drag(double value) {
@@ -13187,7 +13456,7 @@ class _ExpertSliderRowState extends State<_ExpertSliderRow> {
 
     if (_lastHapticBucket != bucket) {
       _lastHapticBucket = bucket;
-      RodinHaptics.frequentSegment();
+      OnyxHaptics.frequentSegment();
     }
 
     // Real DisplayFeature HAL updates continue while dragging,
@@ -13208,9 +13477,9 @@ class _ExpertSliderRowState extends State<_ExpertSliderRow> {
     _lastHapticBucket = null;
 
     if (_lastAccepted == rounded) {
-      RodinHaptics.confirm();
+      OnyxHaptics.confirm();
     } else {
-      RodinHaptics.reject();
+      OnyxHaptics.reject();
     }
   }
 
@@ -13402,7 +13671,7 @@ class _SliderCardState extends State<_SliderCard> {
                     final int bucket = _hapticBucket(value);
                     if (_lastHapticBucket != bucket) {
                       _lastHapticBucket = bucket;
-                      RodinHaptics.frequentSegment();
+                      OnyxHaptics.frequentSegment();
                     }
                     setState(() => _preview = value);
                   }
@@ -13413,9 +13682,9 @@ class _SliderCardState extends State<_SliderCard> {
                     final bool accepted = widget.onChanged(selected);
 
                     if (accepted) {
-                      RodinHaptics.segment();
+                      OnyxHaptics.segment();
                     } else {
-                      RodinHaptics.reject();
+                      OnyxHaptics.reject();
                     }
 
                     setState(() {
@@ -13454,13 +13723,13 @@ class _PersistenceStatusRow extends StatelessWidget {
 
 class _BackendSnapshotBuilder extends StatelessWidget {
   const _BackendSnapshotBuilder({required this.builder});
-  final Widget Function(RodinBackendSnapshot snapshot) builder;
+  final Widget Function(OnyxBackendSnapshot snapshot) builder;
 
   @override
   Widget build(BuildContext context) {
-    return RodinMotionStreamBuilder<RodinBackendSnapshot>(
-      stream: RodinBackend.instance.snapshots,
-      readLatest: () => RodinBackend.instance.latest,
+    return OnyxMotionStreamBuilder<OnyxBackendSnapshot>(
+      stream: OnyxBackend.instance.snapshots,
+      readLatest: () => OnyxBackend.instance.latest,
       builder: builder,
     );
   }
@@ -13588,9 +13857,9 @@ class _SwitchCard extends StatelessWidget {
                 ? (bool v) {
                     final bool accepted = onChanged(v);
                     if (accepted) {
-                      RodinHaptics.toggle(v);
+                      OnyxHaptics.toggle(v);
                     } else {
-                      RodinHaptics.reject();
+                      OnyxHaptics.reject();
                     }
                   }
                 : null,
@@ -13692,9 +13961,9 @@ class _ChoiceCard extends StatelessWidget {
                           if (selected) {
                             final bool accepted = onSelected(option.code);
                             if (accepted) {
-                              RodinHaptics.segment();
+                              OnyxHaptics.segment();
                             } else {
-                              RodinHaptics.reject();
+                              OnyxHaptics.reject();
                             }
                           }
                         }
@@ -13828,7 +14097,7 @@ class _CpuStatusRow extends StatelessWidget {
           Switch.adaptive(
             value: online,
             onChanged: toggleEnabled
-                ? RodinHaptics.toggleCallback(onChanged)
+                ? OnyxHaptics.toggleCallback(onChanged)
                 : null,
             activeThumbColor: accent,
             activeTrackColor: accent.withValues(alpha: 0.35),
@@ -13900,7 +14169,7 @@ class DetailScreen extends StatelessWidget {
     super.key,
   });
 
-  final RodinScreen screen;
+  final OnyxScreen screen;
   final IconData icon;
   final Color accent;
   final String subtitle;
@@ -13908,7 +14177,7 @@ class DetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RodinScrollPage(
+    return OnyxScrollPage(
       children: <Widget>[
         DetailHeader(title: screen.title, onBack: onBack),
         const SizedBox(height: 9),
@@ -13939,8 +14208,8 @@ class DetailScreen extends StatelessWidget {
   }
 }
 
-class RodinScrollPage extends StatefulWidget {
-  const RodinScrollPage({
+class OnyxScrollPage extends StatefulWidget {
+  const OnyxScrollPage({
     this.children = const <Widget>[],
     this.slivers,
     this.header,
@@ -13954,10 +14223,10 @@ class RodinScrollPage extends StatefulWidget {
   final double topPadding;
 
   @override
-  State<RodinScrollPage> createState() => _RodinScrollPageState();
+  State<OnyxScrollPage> createState() => _OnyxScrollPageState();
 }
 
-class _RodinScrollPageState extends State<RodinScrollPage> {
+class _OnyxScrollPageState extends State<OnyxScrollPage> {
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<double> _scrollPixels = ValueNotifier<double>(0);
   final ValueNotifier<double> _scrollVelocity = ValueNotifier<double>(0);
@@ -13966,9 +14235,9 @@ class _RodinScrollPageState extends State<RodinScrollPage> {
   double _lastScrollOffset = 0;
   bool _edgeLatched = false;
 
-  static const double _rodinPhysicalWidth = 1220;
-  static const double _rodinPhysicalHeight = 2712;
-  static const double _rodinPhysicalCutoutTop = 130;
+  static const double _onyxPhysicalWidth = 1220;
+  static const double _onyxPhysicalHeight = 2712;
+  static const double _onyxPhysicalCutoutTop = 130;
 
   @override
   void initState() {
@@ -14020,16 +14289,16 @@ class _RodinScrollPageState extends State<RodinScrollPage> {
     final double physicalWidth = media.size.width * dpr;
     final double physicalHeight = media.size.height * dpr;
 
-    final bool rodinPortrait =
-        (physicalWidth - _rodinPhysicalWidth).abs() < 8 &&
-        (physicalHeight - _rodinPhysicalHeight).abs() < 8;
+    final bool onyxPortrait =
+        (physicalWidth - _onyxPhysicalWidth).abs() < 8 &&
+        (physicalHeight - _onyxPhysicalHeight).abs() < 8;
 
-    final bool rodinLandscape =
-        (physicalWidth - _rodinPhysicalHeight).abs() < 8 &&
-        (physicalHeight - _rodinPhysicalWidth).abs() < 8;
+    final bool onyxLandscape =
+        (physicalWidth - _onyxPhysicalHeight).abs() < 8 &&
+        (physicalHeight - _onyxPhysicalWidth).abs() < 8;
 
-    if ((rodinPortrait || rodinLandscape) && dpr > 0) {
-      return _rodinPhysicalCutoutTop / dpr;
+    if ((onyxPortrait || onyxLandscape) && dpr > 0) {
+      return _onyxPhysicalCutoutTop / dpr;
     }
 
     return 24;
@@ -14046,7 +14315,7 @@ class _RodinScrollPageState extends State<RodinScrollPage> {
 
     final Widget first = widget.children.first;
 
-    if (first is RodinHeader || first is DetailHeader) {
+    if (first is OnyxHeader || first is DetailHeader) {
       return first;
     }
 
@@ -14054,7 +14323,7 @@ class _RodinScrollPageState extends State<RodinScrollPage> {
   }
 
   String? _titleOf(Widget? header) {
-    if (header is RodinHeader) {
+    if (header is OnyxHeader) {
       return header.title;
     }
 
@@ -14066,7 +14335,7 @@ class _RodinScrollPageState extends State<RodinScrollPage> {
   }
 
   double _titleStartFont(Widget? header) {
-    if (header is RodinHeader) {
+    if (header is OnyxHeader) {
       return header.large ? 28 : 24;
     }
 
@@ -14094,7 +14363,7 @@ class _RodinScrollPageState extends State<RodinScrollPage> {
   }
 
   Widget _headerPlaceholder(Widget? header) {
-    if (header is RodinHeader) {
+    if (header is OnyxHeader) {
       final double titleHeight = header.large ? 38 : 32;
 
       return Column(
@@ -14138,7 +14407,7 @@ class _RodinScrollPageState extends State<RodinScrollPage> {
     final outside =
         position.pixels < position.minScrollExtent - 14 ||
         position.pixels > position.maxScrollExtent + 14;
-    if (outside && !_edgeLatched) RodinHaptics.frequentSegment();
+    if (outside && !_edgeLatched) OnyxHaptics.frequentSegment();
     _edgeLatched = outside;
     final double next = _scrollController.offset.clamp(0.0, 96.0).toDouble();
 
@@ -14158,9 +14427,9 @@ class _RodinScrollPageState extends State<RodinScrollPage> {
         controller: _scrollController,
         primary: false,
         scrollCacheExtent: ScrollCacheExtent.pixels(
-          RodinMotionViewportScope.scrollCacheExtentOf(context),
+          OnyxMotionViewportScope.scrollCacheExtentOf(context),
         ),
-        physics: const RodinScrollPhysics(
+        physics: const OnyxScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
         ),
         slivers: <Widget>[
@@ -14180,7 +14449,7 @@ class _RodinScrollPageState extends State<RodinScrollPage> {
           ...widget.slivers!,
           SliverPadding(
             padding: EdgeInsets.only(
-              bottom: RodinBottomLayout.contentClearance(context),
+              bottom: OnyxBottomLayout.contentClearance(context),
             ),
           ),
         ],
@@ -14194,16 +14463,16 @@ class _RodinScrollPageState extends State<RodinScrollPage> {
         controller: _scrollController,
         primary: false,
         scrollCacheExtent: ScrollCacheExtent.pixels(
-          RodinMotionViewportScope.scrollCacheExtentOf(context),
+          OnyxMotionViewportScope.scrollCacheExtentOf(context),
         ),
-        physics: const RodinScrollPhysics(
+        physics: const OnyxScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
         ),
         padding: EdgeInsets.fromLTRB(
           16,
           safeTop + widget.topPadding,
           16,
-          RodinBottomLayout.contentClearance(context),
+          OnyxBottomLayout.contentClearance(context),
         ),
         // One page transition is enough. Replaying a spring on every card adds
         // independent opacity layers and makes Back look unsettled.
@@ -14211,7 +14480,7 @@ class _RodinScrollPageState extends State<RodinScrollPage> {
       );
     }
 
-    final Widget motionChild = RodinScrollMotionScope(
+    final Widget motionChild = OnyxScrollMotionScope(
       velocity: _scrollVelocity,
       child: scrollChild,
     );
@@ -14227,8 +14496,8 @@ class _RodinScrollPageState extends State<RodinScrollPage> {
                   final double morph = Curves.easeInOutCubic.transform(
                     (pixels / 58).clamp(0.0, 1.0).toDouble(),
                   );
-                  return RodinHeaderHitRegion(
-                    key: const ValueKey<String>('rodin-header-content-clip'),
+                  return OnyxHeaderHitRegion(
+                    key: const ValueKey<String>('onyx-header-content-clip'),
                     top:
                         safeTop +
                         (ui.lerpDouble(widget.topPadding + 44, 42, morph) ??
@@ -14246,7 +14515,7 @@ class _RodinScrollPageState extends State<RodinScrollPage> {
             child: ValueListenableBuilder<double>(
               valueListenable: _scrollPixels,
               builder: (BuildContext context, double pixels, Widget? child) {
-                return _RodinChromaticGlassMorph(
+                return _OnyxChromaticGlassMorph(
                   scrollPixels: pixels,
                   safeTop: safeTop,
                   title: _titleOf(header)!,
@@ -14265,8 +14534,8 @@ class _RodinScrollPageState extends State<RodinScrollPage> {
 
 // Let the header sample scrolling pixels for its glass, while keeping covered
 // controls out of touch and accessibility navigation.
-class RodinHeaderHitRegion extends SingleChildRenderObjectWidget {
-  const RodinHeaderHitRegion({
+class OnyxHeaderHitRegion extends SingleChildRenderObjectWidget {
+  const OnyxHeaderHitRegion({
     required this.top,
     required super.child,
     super.key,
@@ -14274,18 +14543,18 @@ class RodinHeaderHitRegion extends SingleChildRenderObjectWidget {
   final double top;
   @override
   RenderObject createRenderObject(BuildContext context) =>
-      _RodinHeaderHitBox(top);
+      _OnyxHeaderHitBox(top);
   @override
   void updateRenderObject(
     BuildContext context,
     covariant RenderObject renderObject,
-  ) => (renderObject as _RodinHeaderHitBox).top = top;
+  ) => (renderObject as _OnyxHeaderHitBox).top = top;
 }
 
 /// Paint underneath the frosted header, but never let a hidden control receive
 /// the header's taps. Clipping the paint here would remove the blur's backdrop.
-class _RodinHeaderHitBox extends RenderProxyBox {
-  _RodinHeaderHitBox(this._top);
+class _OnyxHeaderHitBox extends RenderProxyBox {
+  _OnyxHeaderHitBox(this._top);
   double _top;
   double get top => _top;
   set top(double value) {
@@ -14302,8 +14571,8 @@ class _RodinHeaderHitBox extends RenderProxyBox {
       position.dy >= top && super.hitTest(result, position: position);
 }
 
-class _RodinChromaticGlassMorph extends StatelessWidget {
-  const _RodinChromaticGlassMorph({
+class _OnyxChromaticGlassMorph extends StatelessWidget {
+  const _OnyxChromaticGlassMorph({
     required this.scrollPixels,
     required this.safeTop,
     required this.title,
@@ -14502,8 +14771,8 @@ class _RodinChromaticGlassMorph extends StatelessWidget {
   }
 }
 
-class RodinHeader extends StatelessWidget {
-  const RodinHeader({
+class OnyxHeader extends StatelessWidget {
+  const OnyxHeader({
     required this.title,
     required this.subtitle,
     this.large = false,
@@ -14579,7 +14848,7 @@ class DetailHeader extends StatelessWidget {
 class LiveDashboardHero extends StatelessWidget {
   const LiveDashboardHero({super.key});
 
-  String _displayMode(RodinBackendSnapshot snapshot) {
+  String _displayMode(OnyxBackendSnapshot snapshot) {
     return switch (snapshot.displayColor) {
       0 => 'Original PRO',
       1 => 'Vivid',
@@ -14591,14 +14860,14 @@ class LiveDashboardHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _BackendSnapshotBuilder(
-      builder: (RodinBackendSnapshot snapshot) {
+      builder: (OnyxBackendSnapshot snapshot) {
         final ColorScheme colors = Theme.of(context).colorScheme;
         final bool ready = snapshot.controlsAvailable;
-        final int onlineCores = _rodinOnlineCoreCount(snapshot);
+        final int onlineCores = _onyxOnlineCoreCount(snapshot);
         final int activePerf = snapshot.performanceProfile >= 0
             ? snapshot.performanceProfile
             : 0;
-        final String profile = _rodinPerformanceLabel(activePerf);
+        final String profile = _onyxPerformanceLabel(activePerf);
         const String source = 'Active performance profile';
         final String battery = snapshot.batteryCapacity >= 0
             ? '${snapshot.batteryCapacity}%'
@@ -14606,10 +14875,8 @@ class LiveDashboardHero extends StatelessWidget {
         final String temp = snapshot.batteryTempC == null
             ? '—'
             : '${snapshot.batteryTempC!.toStringAsFixed(1)}°C';
-        final String touch = _rodinTouchLabel(snapshot.touchState);
-        final RodinAppearanceConfig appearance = RodinAppearanceScope.of(
-          context,
-        );
+        final String touch = _onyxTouchLabel(snapshot.touchState);
+        final OnyxAppearanceConfig appearance = OnyxAppearanceScope.of(context);
 
         final Color profileAccent = switch (activePerf) {
           2 => const Color(0xFF35C997), // Battery Saver
@@ -14980,7 +15247,7 @@ class _PulseChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surfaceContainer.withValues(alpha: 0.34),
         borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: RodinSurfaceLines.inset(colors)),
+        border: Border.all(color: OnyxSurfaceLines.inset(colors)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -15307,7 +15574,7 @@ class SurfaceCard extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final bool dark = theme.brightness == Brightness.dark;
     final ColorScheme colors = theme.colorScheme;
-    final RodinAppearanceConfig config = RodinAppearanceScope.of(context);
+    final OnyxAppearanceConfig config = OnyxAppearanceScope.of(context);
     final Color activeAccent = accent ?? config.activeAccent;
     final double radius = config.cardRadius;
 
@@ -15328,10 +15595,7 @@ class SurfaceCard extends StatelessWidget {
           stops: const <double>[0, 0.56, 1],
         ),
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(
-          color: RodinSurfaceLines.border(colors),
-          width: 0.85,
-        ),
+        border: Border.all(color: OnyxSurfaceLines.border(colors), width: 0.85),
         boxShadow: <BoxShadow>[
           BoxShadow(
             color: dark
@@ -15372,7 +15636,7 @@ class SurfaceCard extends StatelessWidget {
         // Minimal Slate
         color: dark ? const Color(0xFF101419) : const Color(0xFFF0F4F8),
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: RodinSurfaceLines.border(colors)),
+        border: Border.all(color: OnyxSurfaceLines.border(colors)),
         boxShadow: dark
             ? const <BoxShadow>[]
             : const <BoxShadow>[
@@ -15394,7 +15658,7 @@ class SurfaceCard extends StatelessWidget {
                 colors: <Color>[Color(0xFFFFFFFF), Color(0xFFF7FAFE)],
               ),
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: RodinSurfaceLines.border(colors)),
+        border: Border.all(color: OnyxSurfaceLines.border(colors)),
         boxShadow: dark
             ? const <BoxShadow>[]
             : const <BoxShadow>[
@@ -15589,13 +15853,13 @@ class SectionLabel extends StatelessWidget {
   }
 }
 
-class RodinHaptics {
-  const RodinHaptics._();
+class OnyxHaptics {
+  const OnyxHaptics._();
 
-  static final RodinBackend _backend = RodinBackend.instance;
+  static final OnyxBackend _backend = OnyxBackend.instance;
 
   static void _send(int kind) {
-    if (!RodinInteractionSettings.hapticsEnabled) return;
+    if (!OnyxInteractionSettings.hapticsEnabled) return;
     _backend.haptic(kind);
   }
 
@@ -15617,8 +15881,8 @@ class RodinHaptics {
   }
 }
 
-class RodinInteractionSettings {
-  const RodinInteractionSettings._();
+class OnyxInteractionSettings {
+  const OnyxInteractionSettings._();
 
   static const int _motionModelVersion = 6;
 
@@ -15631,7 +15895,7 @@ class RodinInteractionSettings {
   static File get _file {
     final Directory parent = Directory.systemTemp.parent;
 
-    return File('${parent.path}/files/rodin-interaction.json');
+    return File('${parent.path}/files/onyx-interaction.json');
   }
 
   static double get motionProgress {
@@ -15784,8 +16048,8 @@ class PressScale extends StatefulWidget {
 class _PressScaleState extends State<PressScale>
     with SingleTickerProviderStateMixin {
   Offset _pressPoint = Offset.zero;
-  final GlobalKey<RodinTouchLightState> _lightKey =
-      GlobalKey<RodinTouchLightState>();
+  final GlobalKey<OnyxTouchLightState> _lightKey =
+      GlobalKey<OnyxTouchLightState>();
   late final AnimationController _depth;
   @override
   void initState() {
@@ -15806,7 +16070,7 @@ class _PressScaleState extends State<PressScale>
     }
     _depth.animateWith(
       SpringSimulation(
-        RodinInteractionSettings.interactionSpring,
+        OnyxInteractionSettings.interactionSpring,
         _depth.value,
         1,
         _depth.velocity.clamp(-4.0, 4.0) + 5,
@@ -15823,7 +16087,7 @@ class _PressScaleState extends State<PressScale>
     final double start = _depth.value;
     _depth.animateWith(
       SpringSimulation(
-        RodinInteractionSettings.interactionSpring,
+        OnyxInteractionSettings.interactionSpring,
         start,
         0,
         _depth.velocity.clamp(-4.0, 4.0),
@@ -15849,17 +16113,17 @@ class _PressScaleState extends State<PressScale>
       onTapCancel: _release,
       onTapUp: (_) {
         _release();
-        if (widget.enableHaptics) RodinHaptics.tap();
+        if (widget.enableHaptics) OnyxHaptics.tap();
         widget.onTap?.call();
       },
       child: AnimatedBuilder(
         animation: _depth,
         child: widget.enableLight
-            ? RodinTouchLight(
+            ? OnyxTouchLight(
                 key: _lightKey,
                 enabled: widget.enableLight,
-                accent: RodinAppearanceScope.of(context).activeAccent,
-                radius: RodinAppearanceScope.of(context).cardRadius,
+                accent: OnyxAppearanceScope.of(context).activeAccent,
+                radius: OnyxAppearanceScope.of(context).cardRadius,
                 child: widget.child,
               )
             : widget.child,
@@ -15869,13 +16133,13 @@ class _PressScaleState extends State<PressScale>
               : _depth.value.clamp(-0.08, 1.04).toDouble();
           final double scale = ui.lerpDouble(
             1,
-            RodinInteractionSettings.pressScale,
+            OnyxInteractionSettings.pressScale,
             depth,
           )!;
           final double opacity = ui
               .lerpDouble(
                 1,
-                RodinInteractionSettings.pressOpacity,
+                OnyxInteractionSettings.pressOpacity,
                 depth.clamp(0, 1).toDouble(),
               )!
               .clamp(0, 1)
@@ -15898,8 +16162,8 @@ class _PressScaleState extends State<PressScale>
   }
 }
 
-class RodinBottomBar extends StatefulWidget {
-  const RodinBottomBar({
+class OnyxBottomBar extends StatefulWidget {
+  const OnyxBottomBar({
     required this.controller,
     required this.currentRoot,
     required this.onSelect,
@@ -15908,15 +16172,15 @@ class RodinBottomBar extends StatefulWidget {
   });
 
   final PageController controller;
-  final RodinScreen currentRoot;
-  final ValueChanged<RodinScreen> onSelect;
+  final OnyxScreen currentRoot;
+  final ValueChanged<OnyxScreen> onSelect;
   final VoidCallback? onDragStart;
 
   @override
-  State<RodinBottomBar> createState() => _RodinBottomBarState();
+  State<OnyxBottomBar> createState() => _OnyxBottomBarState();
 }
 
-class _RodinBottomBarState extends State<RodinBottomBar>
+class _OnyxBottomBarState extends State<OnyxBottomBar>
     with SingleTickerProviderStateMixin {
   late final AnimationController _elasticity = AnimationController.unbounded(
     vsync: this,
@@ -15928,11 +16192,11 @@ class _RodinBottomBarState extends State<RodinBottomBar>
   int? _lastDragIndex;
   bool _dragging = false;
 
-  static const List<RodinScreen> _screens = <RodinScreen>[
-    RodinScreen.home,
-    RodinScreen.hubs,
-    RodinScreen.support,
-    RodinScreen.settings,
+  static const List<OnyxScreen> _screens = <OnyxScreen>[
+    OnyxScreen.home,
+    OnyxScreen.hubs,
+    OnyxScreen.support,
+    OnyxScreen.settings,
   ];
 
   static const List<String> _labels = <String>[
@@ -15976,7 +16240,7 @@ class _RodinBottomBarState extends State<RodinBottomBar>
     _elasticity
       ..stop()
       ..value = 0;
-    RodinHaptics.segment();
+    OnyxHaptics.segment();
     // Keep one real drag activity alive until release. jumpTo() starts a
     // ballistic page snap after EVERY update, fighting a stationary finger.
     _dockDrag = widget.controller.position.drag(
@@ -16024,7 +16288,7 @@ class _RodinBottomBarState extends State<RodinBottomBar>
 
     if (_lastDragIndex != index) {
       if (_lastDragIndex != null) {
-        RodinHaptics.frequentSegment();
+        OnyxHaptics.frequentSegment();
       }
       _lastDragIndex = index;
     }
@@ -16053,7 +16317,7 @@ class _RodinBottomBarState extends State<RodinBottomBar>
         ),
       );
     }
-    RodinHaptics.confirm();
+    OnyxHaptics.confirm();
     // onSelect replaces the drag activity with exactly one target animation;
     // cancelling it first would start a second, competing ballistic snap.
     widget.onSelect(_screens[target]);
@@ -16079,8 +16343,8 @@ class _RodinBottomBarState extends State<RodinBottomBar>
         10 + MediaQuery.viewPaddingOf(context).left,
         0,
         10 + MediaQuery.viewPaddingOf(context).right,
-        RodinBottomLayout.navigationClearance(context) +
-            RodinBottomLayout.dockGap,
+        OnyxBottomLayout.navigationClearance(context) +
+            OnyxBottomLayout.dockGap,
       ),
       child: RepaintBoundary(
         child: Container(
@@ -16109,11 +16373,11 @@ class _RodinBottomBarState extends State<RodinBottomBar>
                 sigmaY: 12,
                 tileMode: TileMode.clamp,
               ),
-              child: RodinTouchLight(
+              child: OnyxTouchLight(
                 accent: _sectionColors[_selectedIndex()],
                 radius: 22,
                 child: Container(
-                  height: RodinBottomLayout.dockHeight,
+                  height: OnyxBottomLayout.dockHeight,
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -16185,7 +16449,7 @@ class _RodinBottomBarState extends State<RodinBottomBar>
                               Widget navItem(int index) {
                                 final double rawFocus =
                                     (1 - (page - index).abs()).clamp(0.0, 1.0);
-                                final double focus = RodinInteractionSettings
+                                final double focus = OnyxInteractionSettings
                                     .transitionCurve
                                     .transform(rawFocus);
                                 final Color itemColor = _sectionColors[index];

@@ -1,22 +1,24 @@
 [package]
-name = "rodin-essential-daemon"
+name = "onyx-essential-daemon"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish = false
+# Only the two declared Onyx executables are build targets.
+autobins = false
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 [lib]
-name = "rodin_essential_backend"
+name = "onyx_essential_backend"
 path = "src/lib.rs"
 
 [[bin]]
-name = "rodin_daemon"
-path = "src/bin/rodin_essentiald.rs"
+name = "onyx_daemon"
+path = "src/bin/onyx_daemon.rs"
 
 [[bin]]
-name = "rodin_ctl"
-path = "src/bin/rodin_essentialctl.rs"
+name = "onyx_ctl"
+path = "src/bin/onyx_ctl.rs"

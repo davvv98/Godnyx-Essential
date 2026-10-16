@@ -4,24 +4,26 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 UI="$ROOT/ui/flutter"
 MAIN="$UI/lib/main.dart"
-BACKEND_DART="$UI/lib/backend/rodin_backend.dart"
+BACKEND_DART="$UI/lib/backend/onyx_backend.dart"
 HOST_LIB="$ROOT/runtime/host-rust/src/lib.rs"
 HOST_BRIDGE="$ROOT/runtime/host-rust/src/backend_bridge.rs"
 DAEMON_LIB="$ROOT/runtime/daemon-rust/src/lib.rs"
 
-SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/Android/Sdk}}"
-PKG="io.github.neeschal.rodinessential"
-COMP="$PKG/.RodinActivity"
+bash "$ROOT/tools/cleanup-legacy-paths.sh"
 
-STAMP="${RODIN_BUILD_STAMP:-$(date +%Y%m%d-%H%M%S)}"
-OUT="${RODIN_OUTPUT_DIR:-$ROOT/out/release/$STAMP}"
+SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/Android/Sdk}}"
+PKG="io.github.davvv98.onyxessential"
+COMP="$PKG/.OnyxActivity"
+
+STAMP="${ONYX_BUILD_STAMP:-$(date +%Y%m%d-%H%M%S)}"
+OUT="${ONYX_OUTPUT_DIR:-$ROOT/out/release/$STAMP}"
 AOT="$OUT/flutter-aot"
-APK="$OUT/Rodin-Essential.apk"
+APK="$OUT/Onyx-Essential.apk"
 LOG="$OUT/device-logcat.txt"
 
 mkdir -p "$OUT" "$AOT"
 
-echo "===== RODIN ESSENTIAL — NATIVE RELEASE BUILD ====="
+echo "===== ONYX ESSENTIAL — NATIVE RELEASE BUILD ====="
 echo "root=$ROOT"
 echo "output=$OUT"
 echo "apk=$APK"
@@ -48,9 +50,9 @@ echo "===== 2. BUILD FLUTTER AOT RELEASE BUNDLE ====="
 
 echo
 echo "===== 3. DETECT TOOLCHAINS ====="
-BUILD_TOOLS="${RODIN_BUILD_TOOLS_VERSION:-$(find "$SDK/build-tools" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -1)}"
-PLATFORM="${RODIN_PLATFORM_VERSION:-$(find "$SDK/platforms" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sed -nE 's/^android-([0-9]+)$/\1/p' | sort -n | tail -1)}"
-NDK_VER="${RODIN_NDK_VERSION:-$(find "$SDK/ndk" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -1)}"
+BUILD_TOOLS="${ONYX_BUILD_TOOLS_VERSION:-$(find "$SDK/build-tools" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -1)}"
+PLATFORM="${ONYX_PLATFORM_VERSION:-$(find "$SDK/platforms" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sed -nE 's/^android-([0-9]+)$/\1/p' | sort -n | tail -1)}"
+NDK_VER="${ONYX_NDK_VERSION:-$(find "$SDK/ndk" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -1)}"
 
 NDK="$SDK/ndk/$NDK_VER"
 LINKER="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android31-clang"
@@ -61,17 +63,17 @@ ANDROID_JAR="$SDK/platforms/android-$PLATFORM/android.jar"
 ENGINE_PREBUILT="$ROOT/runtime/flutter-engine/prebuilt/android-arm64"
 ICU="$ENGINE_PREBUILT/icudtl.dat"
 
-for RODIN_TOOL in flutter cargo python3 keytool readelf sha256sum unzip zip; do
-    command -v "$RODIN_TOOL" >/dev/null 2>&1 || {
-        echo "Missing required tool: $RODIN_TOOL" >&2
+for ONYX_TOOL in flutter cargo python3 keytool readelf sha256sum unzip zip; do
+    command -v "$ONYX_TOOL" >/dev/null 2>&1 || {
+        echo "Missing required tool: $ONYX_TOOL" >&2
         exit 1
     }
 done
 
-for RODIN_FILE in "$LINKER" "$AAPT2" "$ZIPALIGN" "$APKSIGNER" "$ANDROID_JAR" \
+for ONYX_FILE in "$LINKER" "$AAPT2" "$ZIPALIGN" "$APKSIGNER" "$ANDROID_JAR" \
     "$ENGINE_PREBUILT/libflutter_engine.so" "$ICU"; do
-    [ -f "$RODIN_FILE" ] || {
-        echo "Missing build dependency: $RODIN_FILE" >&2
+    [ -f "$ONYX_FILE" ] || {
+        echo "Missing build dependency: $ONYX_FILE" >&2
         exit 1
     }
 done
@@ -96,9 +98,9 @@ export RUSTFLAGS="-L native=$ROOT/runtime/flutter-engine/prebuilt/android-arm64 
     cargo build --release --target aarch64-linux-android
 )
 
-HOST_SO="$CARGO_TARGET_DIR/aarch64-linux-android/release/librodin_essential_host.so"
-DAEMON_BIN="$CARGO_TARGET_DIR/aarch64-linux-android/release/rodin_daemon"
-CTL_BIN="$CARGO_TARGET_DIR/aarch64-linux-android/release/rodin_ctl"
+HOST_SO="$CARGO_TARGET_DIR/aarch64-linux-android/release/libonyx_essential_host.so"
+DAEMON_BIN="$CARGO_TARGET_DIR/aarch64-linux-android/release/onyx_daemon"
+CTL_BIN="$CARGO_TARGET_DIR/aarch64-linux-android/release/onyx_ctl"
 
 echo
 echo "===== 5. PACKAGE ZERO-DEX / 16K APK ====="
@@ -114,7 +116,7 @@ cp -a "$AOT/flutter_assets/." "$ASSETS/flutter_assets/"
 find "$AOT/flutter_assets" -type f -printf '%P\n' | LC_ALL=C sort > "$ASSETS/flutter_assets.index"
 cp -a "$ICU" "$ASSETS/icudtl.dat"
 
-RODIN_RUNTIME_ASSET_STAMP="$(
+ONYX_RUNTIME_ASSET_STAMP="$(
     (
         cd "$ASSETS"
         find flutter_assets -type f -print0 \
@@ -123,10 +125,10 @@ RODIN_RUNTIME_ASSET_STAMP="$(
         sha256sum icudtl.dat
     ) | sha256sum | awk '{print $1}'
 )"
-printf '%s\n' "$RODIN_RUNTIME_ASSET_STAMP" > "$ASSETS/rodin_runtime.stamp"
-echo "RUNTIME_ASSET_STAMP=$RODIN_RUNTIME_ASSET_STAMP"
+printf '%s\n' "$ONYX_RUNTIME_ASSET_STAMP" > "$ASSETS/onyx_runtime.stamp"
+echo "RUNTIME_ASSET_STAMP=$ONYX_RUNTIME_ASSET_STAMP"
 
-cp -a "$HOST_SO" "$LIBS/librodin_essential_host.so"
+cp -a "$HOST_SO" "$LIBS/libonyx_essential_host.so"
 cp -a "$ENGINE_PREBUILT/libflutter_engine.so" "$LIBS/libflutter_engine.so"
 cp -a "$AOT/arm64-v8a/app.so" "$LIBS/libapp.so"
 
@@ -170,13 +172,13 @@ ANDROID_SDK_ROOT="$SDK" bash "$ROOT/tools/compile-platform-bridge.sh" "$STAGE"
 (cd "$STAGE/platform-dex" && zip -0 "$UNALIGNED" classes.dex >/dev/null)
 "$ZIPALIGN" -P 16 -f 4 "$UNALIGNED" "$ALIGNED"
 
-KS_PASS="${RODIN_KEYSTORE_PASS:-android}"
-KEY_PASS="${RODIN_KEY_PASS:-$KS_PASS}"
-KEYSTORE="${RODIN_KEYSTORE:-}"
+KS_PASS="${ONYX_KEYSTORE_PASS:-android}"
+KEY_PASS="${ONYX_KEY_PASS:-$KS_PASS}"
+KEYSTORE="${ONYX_KEYSTORE:-}"
 
 if [ -z "$KEYSTORE" ]; then
-    KEYSTORE="$ROOT/out/signing/rodin-essential-development.jks"
-    ALIAS="rodin-essential-development"
+    KEYSTORE="$ROOT/out/signing/onyx-essential-development.jks"
+    ALIAS="onyx-essential-development"
     mkdir -p "$(dirname "$KEYSTORE")"
     if [ ! -f "$KEYSTORE" ]; then
         keytool -genkeypair \
@@ -188,15 +190,15 @@ if [ -z "$KEYSTORE" ]; then
             -keyalg RSA \
             -keysize 4096 \
             -validity 10000 \
-            -dname "CN=Rodin Essential Development,O=Rodin Essential,C=NP" \
+            -dname "CN=Onyx Essential Development,O=Onyx Essential,C=NP" \
             >/dev/null 2>&1
     fi
 else
     [ -f "$KEYSTORE" ] || {
-        echo "RODIN_KEYSTORE does not exist: $KEYSTORE" >&2
+        echo "ONYX_KEYSTORE does not exist: $KEYSTORE" >&2
         exit 1
     }
-    ALIAS="${RODIN_KEY_ALIAS:-$(keytool -list -keystore "$KEYSTORE" -storepass "$KS_PASS" | sed -nE 's/^([^,]+), .*/\1/p' | head -1)}"
+    ALIAS="${ONYX_KEY_ALIAS:-$(keytool -list -keystore "$KEYSTORE" -storepass "$KS_PASS" | sed -nE 's/^([^,]+), .*/\1/p' | head -1)}"
 fi
 
 [ -n "$ALIAS" ] || {
@@ -225,32 +227,32 @@ ANDROID_SDK_ROOT="$SDK" bash "$ROOT/tools/check-platform-dex.sh" "$APK"
 echo "16K_ZIPALIGN=PASS"
 
 verify_elf_alignment() {
-    local RODIN_ELF="$1"
-    local RODIN_ALIGNMENT
-    local RODIN_LOADS=0
+    local ONYX_ELF="$1"
+    local ONYX_ALIGNMENT
+    local ONYX_LOADS=0
 
-    while read -r RODIN_ALIGNMENT; do
-        [ -n "$RODIN_ALIGNMENT" ] || continue
-        RODIN_LOADS=$((RODIN_LOADS + 1))
-        if [ "$((RODIN_ALIGNMENT))" -lt 16384 ]; then
-            echo "16K_ELF_ALIGNMENT=FAIL file=$RODIN_ELF align=$RODIN_ALIGNMENT" >&2
+    while read -r ONYX_ALIGNMENT; do
+        [ -n "$ONYX_ALIGNMENT" ] || continue
+        ONYX_LOADS=$((ONYX_LOADS + 1))
+        if [ "$((ONYX_ALIGNMENT))" -lt 16384 ]; then
+            echo "16K_ELF_ALIGNMENT=FAIL file=$ONYX_ELF align=$ONYX_ALIGNMENT" >&2
             exit 1
         fi
-    done < <(readelf -lW "$RODIN_ELF" | awk '$1 == "LOAD" { print $NF }')
+    done < <(readelf -lW "$ONYX_ELF" | awk '$1 == "LOAD" { print $NF }')
 
-    [ "$RODIN_LOADS" -gt 0 ] || {
-        echo "No ELF LOAD segments found: $RODIN_ELF" >&2
+    [ "$ONYX_LOADS" -gt 0 ] || {
+        echo "No ELF LOAD segments found: $ONYX_ELF" >&2
         exit 1
     }
 }
 
-for RODIN_ELF in \
-    "$LIBS/librodin_essential_host.so" \
+for ONYX_ELF in \
+    "$LIBS/libonyx_essential_host.so" \
     "$LIBS/libflutter_engine.so" \
     "$LIBS/libapp.so" \
     "$DAEMON_BIN" \
     "$CTL_BIN"; do
-    verify_elf_alignment "$RODIN_ELF"
+    verify_elf_alignment "$ONYX_ELF"
 done
 echo "16K_ELF_ALIGNMENT=PASS"
 
@@ -262,12 +264,12 @@ import sys
 host, dart = sys.argv[1:]
 source = open(dart, encoding="utf-8").read()
 required = set(
-    re.findall(r"'((?:rodin_backend|rodin_host)_[A-Za-z0-9_]+)'", source)
+    re.findall(r"'((?:onyx_backend|onyx_host)_[A-Za-z0-9_]+)'", source)
 )
 symbols = subprocess.check_output(["readelf", "-Ws", host], text=True)
 exported = set(
     re.findall(
-        r"\b((?:rodin_backend|rodin_host)_[A-Za-z0-9_]+)\s*$",
+        r"\b((?:onyx_backend|onyx_host)_[A-Za-z0-9_]+)\s*$",
         symbols,
         re.MULTILINE,
     )
@@ -278,7 +280,7 @@ if missing:
 print(f"NATIVE_API_PARITY=PASS ({len(required)} Dart lookups)")
 PY
 
-if [ "${RODIN_BUILD_ONLY:-0}" = "1" ]; then
+if [ "${ONYX_BUILD_ONLY:-0}" = "1" ]; then
     echo
     echo "===== BUILD-ONLY SUCCESSFUL! ====="
     echo "APK=$APK"
@@ -292,11 +294,11 @@ echo "===== 7. INSTALL ON CONNECTED PHONE ====="
 adb install --no-incremental -r "$APK" || adb install -r "$APK"
 if [ -f "$DAEMON_BIN" ]; then
     echo "Updating daemon and ctl binaries on device..."
-    adb push "$DAEMON_BIN" /data/local/tmp/rodin_daemon >/dev/null
-    adb push "$CTL_BIN" /data/local/tmp/rodin_ctl >/dev/null
-    adb push "$ROOT/android/kernelsu-next/service.sh" /data/local/tmp/rodin-service.sh >/dev/null
-    adb push "$ROOT/android/kernelsu-next/module.prop" /data/local/tmp/rodin-module.prop >/dev/null
-    adb shell "su -c 'if [ -f /data/adb/onyx-essential/watchdog.pid ]; then kill \$(cat /data/adb/onyx-essential/watchdog.pid) 2>/dev/null || true; fi; for p in \$(pidof rodin_daemon) \$(pidof rodin_essentiald); do kill -9 \$p 2>/dev/null || true; done; sleep 0.4; mkdir -p /data/adb/onyx-essential /data/adb/modules/nees_rodin_essential_backend/bin; cp -f /data/local/tmp/rodin_daemon /data/adb/modules/nees_rodin_essential_backend/bin/rodin_daemon; cp -f /data/local/tmp/rodin_ctl /data/adb/modules/nees_rodin_essential_backend/bin/rodin_ctl; cp -f /data/local/tmp/rodin-service.sh /data/adb/modules/nees_rodin_essential_backend/service.sh; cp -f /data/local/tmp/rodin-module.prop /data/adb/modules/nees_rodin_essential_backend/module.prop; touch /data/adb/modules/nees_rodin_essential_backend/skip_mount; chmod 0755 /data/adb/modules/nees_rodin_essential_backend/bin/rodin_daemon /data/adb/modules/nees_rodin_essential_backend/bin/rodin_ctl /data/adb/modules/nees_rodin_essential_backend/service.sh; chmod 0644 /data/adb/modules/nees_rodin_essential_backend/module.prop /data/adb/modules/nees_rodin_essential_backend/skip_mount; chown -R root:root /data/adb/onyx-essential /data/adb/modules/nees_rodin_essential_backend; nohup /data/adb/modules/nees_rodin_essential_backend/service.sh >/dev/null 2>&1 &'" >/dev/null
+    adb push "$DAEMON_BIN" /data/local/tmp/onyx_daemon >/dev/null
+    adb push "$CTL_BIN" /data/local/tmp/onyx_ctl >/dev/null
+    adb push "$ROOT/android/kernelsu-next/service.sh" /data/local/tmp/onyx-service.sh >/dev/null
+    adb push "$ROOT/android/kernelsu-next/module.prop" /data/local/tmp/onyx-module.prop >/dev/null
+    adb shell "su -c 'if [ -f /data/adb/onyx-essential/watchdog.pid ]; then kill \$(cat /data/adb/onyx-essential/watchdog.pid) 2>/dev/null || true; fi; for p in \$(pidof onyx_daemon) \$(pidof onyx_essentiald); do kill -9 \$p 2>/dev/null || true; done; sleep 0.4; mkdir -p /data/adb/onyx-essential /data/adb/modules/nees_rodin_essential_backend/bin; cp -f /data/local/tmp/onyx_daemon /data/adb/modules/nees_rodin_essential_backend/bin/onyx_daemon; cp -f /data/local/tmp/onyx_ctl /data/adb/modules/nees_rodin_essential_backend/bin/onyx_ctl; cp -f /data/local/tmp/onyx-service.sh /data/adb/modules/nees_rodin_essential_backend/service.sh; cp -f /data/local/tmp/onyx-module.prop /data/adb/modules/nees_rodin_essential_backend/module.prop; touch /data/adb/modules/nees_rodin_essential_backend/skip_mount; chmod 0755 /data/adb/modules/nees_rodin_essential_backend/bin/onyx_daemon /data/adb/modules/nees_rodin_essential_backend/bin/onyx_ctl /data/adb/modules/nees_rodin_essential_backend/service.sh; chmod 0644 /data/adb/modules/nees_rodin_essential_backend/module.prop /data/adb/modules/nees_rodin_essential_backend/skip_mount; chown -R root:root /data/adb/onyx-essential /data/adb/modules/nees_rodin_essential_backend; nohup /data/adb/modules/nees_rodin_essential_backend/service.sh >/dev/null 2>&1 &'" >/dev/null
     sleep 1
 fi
 

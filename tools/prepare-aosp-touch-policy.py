@@ -9,7 +9,7 @@ import difflib
 from pathlib import Path
 import re
 
-ATTRIBUTE = "rodin_native_touch_access"
+ATTRIBUTE = "onyx_native_touch_access"
 
 
 def prepare(attributes: str, domain: str) -> tuple[str, str]:
@@ -38,9 +38,9 @@ def prepare(attributes: str, domain: str) -> tuple[str, str]:
             raise ValueError("Partial existing exception; reconcile it manually")
         return attributes, domain
     if ATTRIBUTE in attributes or ATTRIBUTE in domain:
-        raise ValueError("Conflicting pre-existing Rodin attribute")
+        raise ValueError("Conflicting pre-existing Onyx attribute")
     attributes = attributes.rstrip() + (
-        "\n\n# Opt-in legacy Rodin THP access. Assign only to rodin_daemon.\n"
+        "\n\n# Opt-in legacy Onyx THP access. Assign only to onyx_daemon.\n"
         + declaration + "\n" + expansion + "\n"
     )
     domain = ptrace.sub(lambda match: match[0].replace("neverallow {\n", "neverallow {\n" + exclusion, 1), domain)

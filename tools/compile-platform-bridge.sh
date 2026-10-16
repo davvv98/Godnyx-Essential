@@ -3,8 +3,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${1:?output directory required}"
 SDK="${ANDROID_SDK_ROOT:?Android SDK required}"
-if [ -n "${RODIN_BUILD_TOOLS_VERSION:-}" ]; then
-    TOOLS="$SDK/build-tools/$RODIN_BUILD_TOOLS_VERSION"
+if [ -n "${ONYX_BUILD_TOOLS_VERSION:-}" ]; then
+    TOOLS="$SDK/build-tools/$ONYX_BUILD_TOOLS_VERSION"
 else
     TOOLS="$(find "$SDK/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
 fi
@@ -18,7 +18,7 @@ if [ ! -x "$DEXDUMP" ]; then
     DEXDUMP="$(find "$SDK/build-tools" -type f -name dexdump | sort -V | tail -1)"
 fi
 "$DEXDUMP" "$OUT/platform-dex/classes.dex" | awk -F "'" '/Class descriptor/ {print $2}' > "$OUT/platform-dex/classes.txt"
-if grep -Ev '^Lio/github/neeschal/rodinessential/(RodinActivity|BypassTileService)(;|\$)' "$OUT/platform-dex/classes.txt"; then
+if grep -Ev '^Lio/github/davvv98/onyxessential/(OnyxActivity|BypassTileService)(;|\$)' "$OUT/platform-dex/classes.txt"; then
     echo 'Unexpected managed class in platform bridge' >&2; exit 1
 fi
 test "$(wc -c < "$OUT/platform-dex/classes.dex")" -le 32768

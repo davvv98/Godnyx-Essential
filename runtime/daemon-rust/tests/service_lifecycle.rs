@@ -1,12 +1,12 @@
 #![cfg(not(target_os = "android"))]
 
-use rodin_essential_backend::handle_command;
+use onyx_essential_backend::handle_command;
 use std::fs;
 use std::process::Command;
 
 #[test]
 fn service_lifecycle_survives_process_restart() {
-    if let Ok(expected) = std::env::var("RODIN_TEST_EXPECT_ENABLED") {
+    if let Ok(expected) = std::env::var("ONYX_TEST_EXPECT_ENABLED") {
         let snapshot = handle_command("GET snapshot");
         assert!(
             snapshot.contains(&format!("service_enabled={expected}")),
@@ -20,7 +20,7 @@ fn service_lifecycle_survives_process_restart() {
         return;
     }
     let dir = std::env::temp_dir().join(
-        format!("rodin-service-test-{}", std::process::id())
+        format!("onyx-service-test-{}", std::process::id())
             + &format!(
                 "-{}",
                 std::time::SystemTime::now()
@@ -32,7 +32,7 @@ fn service_lifecycle_survives_process_restart() {
     fs::create_dir(&dir).unwrap();
     // This test executable has one test, with no concurrent environment access.
     unsafe {
-        std::env::set_var("RODIN_STATE_DIR", &dir);
+        std::env::set_var("ONYX_STATE_DIR", &dir);
     }
     assert_eq!(handle_command("SET service.enabled 0"), "OK applied");
     let disabled = fs::read_to_string(dir.join("service.json")).unwrap();
@@ -44,7 +44,7 @@ fn service_lifecycle_survives_process_restart() {
         let status = Command::new(std::env::current_exe().unwrap())
             .arg("--exact")
             .arg("service_lifecycle_survives_process_restart")
-            .env("RODIN_TEST_EXPECT_ENABLED", enabled)
+            .env("ONYX_TEST_EXPECT_ENABLED", enabled)
             .status()
             .unwrap();
         assert!(status.success());

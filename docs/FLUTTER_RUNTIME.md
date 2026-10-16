@@ -1,26 +1,24 @@
-# Flutter runtime pin
+# Onyx Flutter engine
 
-Rodin Essential ships its own custom Flutter embedder runtime and does not load
-Flutter libraries from the ROM.
+Onyx uses a custom Flutter embedder rather than the ROM engine. The SDK is
+pinned to Flutter 3.47.7. The engine revision comes from
+`bin/internal/engine.version` and may differ from the SDK tag commit.
 
-The framework engine revision is read from the active Flutter SDK at:
+Actions builds the engine in a separate checkout, avoiding SDK changes during
+gclient sync. The build script checks the revision before compiling.
+`embedder.h`, the engine and the AOT snapshots must correspond.
 
-```text
-bin/internal/engine.version
-```
+Generated files are ignored by Git:
 
-`tools/build-flutter-engine.sh` compares that value with the engine checkout
-before building. A mismatch is a hard failure because the AOT snapshot,
-`embedder.h`, and `libflutter_engine.so` must share an ABI revision.
+- `runtime/flutter-engine/prebuilt/android-arm64/libflutter_engine.so`
+- `runtime/flutter-engine/prebuilt/android-arm64/icudtl.dat`
 
-Local engine artifacts are deliberately ignored by Git:
+The Actions cache includes the header and revision marker. Before APK packaging,
+`llvm-strip --strip-unneeded` removes engine symbols. Logs show sizes before and
+after stripping. This removes debug content; final size must be measured from
+the built APK.
 
-```text
-runtime/flutter-engine/prebuilt/android-arm64/libflutter_engine.so
-runtime/flutter-engine/prebuilt/android-arm64/icudtl.dat
-```
-
-An engine update is complete only after rebuilding the APK and validating zero
-DEX, ARM64 loading, 16 KB alignment, first frame, EGL lifecycle, input,
-choreographer pacing, foreground/background transitions, and all backend FFI
-entry points on Rodin hardware.
+The APK contains ARM64 code, an AOT interface and a small Java framework adapter
+for the activity and tile. It is not a zero-DEX APK. Build scripts check native
+symbols and 16 KB alignment. Final device validation includes startup, input,
+screen transitions and returning from the background.

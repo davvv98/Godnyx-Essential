@@ -1,0 +1,3 @@
+# Public daemon types referenced by Onyx's vendor policy.
+type onyx_daemon, domain, coredomain;
+type onyx_daemon_exec, system_file_type, exec_type, file_type;

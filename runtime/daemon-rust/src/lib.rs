@@ -22,9 +22,9 @@ mod subsystem_clocks;
 mod system_colors;
 mod touch_resampler;
 
-pub const SOCKET_NAME: &str = "rodin_essentiald_v15";
-pub const REVERSE_SOCKET_NAME: &str = "rodin_essential_app_v15";
-pub const PROTOCOL_VERSION: &str = "onyx.3";
+pub const SOCKET_NAME: &str = "onyx_essentiald_v15";
+pub const REVERSE_SOCKET_NAME: &str = "onyx_essential_app_v15";
+pub const PROTOCOL_VERSION: &str = "onyx.4";
 const LOOPBACK_PORT: u16 = 732;
 
 const AF_UNIX: i32 = 1;
@@ -459,8 +459,8 @@ fn package_app_id_from_packages_list(contents: &str, package: &str) -> Option<u3
 }
 
 fn configured_app_uid_policy() -> AppUidPolicy {
-    *APP_UID_POLICY.get_or_init(|| match std::env::var("RODIN_APP_UID") {
-        Err(std::env::VarError::NotPresent) => match std::env::var("RODIN_APP_PACKAGE") {
+    *APP_UID_POLICY.get_or_init(|| match std::env::var("ONYX_APP_UID") {
+        Err(std::env::VarError::NotPresent) => match std::env::var("ONYX_APP_PACKAGE") {
             Err(std::env::VarError::NotPresent) => AppUidPolicy::SelinuxOnly,
             Err(std::env::VarError::NotUnicode(_)) => AppUidPolicy::Reject,
             Ok(package) => fs::read_to_string("/data/system/packages.list")
@@ -611,7 +611,7 @@ fn write_verified(path: &Path, value: &str) -> Result<String, String> {
     read_trimmed(path)
 }
 
-const RODIN_MAX_FCC_UA: i64 = 22_000_000;
+const ONYX_MAX_FCC_UA: i64 = 22_000_000;
 const BYPASS_CHARGING_PATHS: [&str; 2] = [
     "/sys/class/power_supply/battery/bypass_charging",
     "/sys/class/power_supply/battery/bypass_charge",
@@ -756,7 +756,7 @@ fn maintain_bypass_policy() {
     if let Some(state) = state.filter(|state| state.bypass_charging == 1) {
         if let Err(error) = reconcile_bypass(true, state.bypass_threshold, false) {
             if BYPASS_POLICY_ERROR.swap(1, Ordering::AcqRel) == 0 {
-                eprintln!("RODIN_BYPASS_POLICY_FAIL {error}");
+                eprintln!("ONYX_BYPASS_POLICY_FAIL {error}");
             }
         }
     }
@@ -809,7 +809,7 @@ fn valid_charging_profile(profile: i32) -> bool {
 fn normalize_charging_profile(profile: i32) -> i32 {
     match profile {
         // v1.18.x stored the old boost switch as 8. Preserve that intent as
-        // the full Rodin charging tier after upgrading.
+        // the full Onyx charging tier after upgrading.
         8 => 90,
         value if valid_charging_profile(value) => value,
         _ => 0,
@@ -822,7 +822,7 @@ fn charging_profile_fcc_ua(profile: i32) -> Option<i64> {
         33 => Some(8_067_000),
         65 => Some(15_889_000),
         85 => Some(20_778_000),
-        90 => Some(RODIN_MAX_FCC_UA),
+        90 => Some(ONYX_MAX_FCC_UA),
         _ => None,
     }
 }
@@ -1898,7 +1898,7 @@ fn read_u16_from_slice(bytes: &[u8], offset: usize) -> Option<u16> {
 }
 
 fn find_touch_thp_config_offset(bytes: &[u8]) -> Option<usize> {
-    // Both Rodin panel variants use libtouchreport_hal.so and the same THP
+    // Both Onyx panel variants use libtouchreport_hal.so and the same THP
     // timing block. Match all three vendor timing pairs instead of relying on
     // one firmware build's absolute virtual address.
     if bytes.len() < 0x38 {
@@ -1921,7 +1921,7 @@ fn find_touch_thp_config_offset(bytes: &[u8]) -> Option<usize> {
 }
 
 fn locate_touch_thp_layout() -> Result<TouchThpLayout, String> {
-    Err("Rodin THP memory layout is not validated for Onyx".into())
+    Err("Onyx THP memory layout is not validated for Onyx".into())
 }
 
 fn read_touch_thp_rate(layout: TouchThpLayout, address: u64) -> Result<u16, String> {
@@ -1941,7 +1941,7 @@ fn read_touch_thp_rate(layout: TouchThpLayout, address: u64) -> Result<u16, Stri
 
 fn write_touch_thp_rate(rate: u16) -> Result<TouchThpLayout, String> {
     if !matches!(rate, 240 | 480) {
-        return Err(format!("unsupported Rodin THP rate {rate}"));
+        return Err(format!("unsupported Onyx THP rate {rate}"));
     }
 
     let layout = locate_touch_thp_layout()?;
@@ -2028,14 +2028,14 @@ type TouchHalStep = (i32, i32, bool);
 
 fn touch_hal_profile_sequence(profile: i32) -> Result<&'static [TouchHalStep], String> {
     // These are Xiaomi TouchFeature HAL modes, not calls into the HyperOS
-    // Game Turbo application. The HAL lives in Rodin's vendor/ODM stack and
+    // Game Turbo application. The HAL lives in Onyx's vendor/ODM stack and
     // abstracts both supported Goodix and FocalTech panels.
     //
     // mode 0: game mode; 1: active mode; 2-6: response calibration;
     // 7: orientation; 202: super report path; 10001-10004: vendor Super Touch.
     // Super-report commands are deliberately last so a subsequent game-mode
     // write cannot return the report pipeline to its 240 Hz base path.
-    // Native 240 and native 480 must remain separate transactions. Rodin's
+    // Native 240 and native 480 must remain separate transactions. Onyx's
     // mode-2 value 99 is the vendor high-sensitivity latch for the 240 Hz path:
     // the HAL normalizes its public readback to 4, but omitting the latch makes
     // the panel deliver only about 135 Hz while still claiming 240 Hz. The
@@ -2136,11 +2136,11 @@ fn apply_touch_driver_fallback(profile: i32, panel: i32) -> Result<(), String> {
     }
 
     if panel != 1 {
-        return Err("Rodin TouchFeature HAL unavailable for this panel".into());
+        return Err("Onyx TouchFeature HAL unavailable for this panel".into());
     }
 
     if !matches!(profile, 1 | 2) {
-        return Err("this touch profile requires the Rodin vendor touch HAL".into());
+        return Err("this touch profile requires the Onyx vendor touch HAL".into());
     }
 
     let value = if profile == 1 { "0" } else { "1" };
@@ -2314,7 +2314,7 @@ fn set_display_toggle(case_id: i32, enabled: bool, state: &AtomicI32) -> Result<
 }
 
 const DEFAULT_STATE_DIR: &str = "/data/adb/onyx-essential";
-const STATE_DIR_ENV: &str = "RODIN_STATE_DIR";
+const STATE_DIR_ENV: &str = "ONYX_STATE_DIR";
 
 static PERFORMANCE_PROFILE_SUPPORTED: AtomicI32 = AtomicI32::new(-1);
 static PERFORMANCE_PROFILE_VERIFIED: AtomicI32 = AtomicI32::new(-1);
@@ -3926,7 +3926,7 @@ fn late_boot_restore_loop() {
         let runtime_result = reassert_runtime_state(true);
         reassert_persisted_governors();
         eprintln!(
-            "RODIN_BOOT_RESTORE attempt={} runtime_ack={} runtime_ok={}",
+            "ONYX_BOOT_RESTORE attempt={} runtime_ack={} runtime_ok={}",
             attempt + 1,
             KEEPALIVE_APPLY_ACK.load(Ordering::Acquire),
             i32::from(runtime_result.is_ok()),
@@ -4138,7 +4138,7 @@ fn charging_power_supply_event_loop() {
         };
         if fd < 0 {
             eprintln!(
-                "RODIN_CHARGING_UEVENT_SOCKET_FAIL {}",
+                "ONYX_CHARGING_UEVENT_SOCKET_FAIL {}",
                 std::io::Error::last_os_error()
             );
             std::thread::sleep(Duration::from_secs(2));
@@ -4160,7 +4160,7 @@ fn charging_power_supply_event_loop() {
         } == 0;
         if !bound {
             eprintln!(
-                "RODIN_CHARGING_UEVENT_BIND_FAIL {}",
+                "ONYX_CHARGING_UEVENT_BIND_FAIL {}",
                 std::io::Error::last_os_error()
             );
             unsafe { close(fd) };
@@ -4193,7 +4193,7 @@ fn charging_power_supply_event_loop() {
                 .map(|state| (state.charging, state.bypass_charging))
                 .unwrap_or((0, 0));
             if let Err(error) = maintain_charging_state(profile, bypass_charging) {
-                eprintln!("RODIN_CHARGING_UEVENT_APPLY_FAIL {error}");
+                eprintln!("ONYX_CHARGING_UEVENT_APPLY_FAIL {error}");
             }
         }
 
@@ -4205,10 +4205,10 @@ fn charging_power_supply_event_loop() {
 pub fn start_background_services() {
     #[cfg(target_os = "android")]
     std::thread::spawn(bypass_monitor_loop);
-    if std::env::var("RODIN_REVERSE_IPC").as_deref() == Ok("1") {
+    if std::env::var("ONYX_REVERSE_IPC").as_deref() == Ok("1") {
         std::thread::spawn(reverse_ipc_loop);
     }
-    if std::env::var("RODIN_LOOPBACK_IPC").as_deref() == Ok("1") {
+    if std::env::var("ONYX_LOOPBACK_IPC").as_deref() == Ok("1") {
         std::thread::spawn(loopback_ipc_loop);
     }
     let _ = persisted_state();
@@ -4257,7 +4257,7 @@ fn loopback_ipc_loop() {
                 // A previous daemon can leave the fixed local port transiently
                 // unavailable. Keep the authenticated Unix transports alive
                 // and recover this compatibility listener without a reboot.
-                eprintln!("RODIN_ESSENTIALD_LOOPBACK_BIND_FAIL {error}");
+                eprintln!("ONYX_ESSENTIALD_LOOPBACK_BIND_FAIL {error}");
                 std::thread::sleep(Duration::from_secs(2));
                 continue;
             }
@@ -4269,7 +4269,7 @@ fn loopback_ipc_loop() {
                     std::thread::spawn(move || serve_loopback_client(stream));
                 }
                 Err(error) => {
-                    eprintln!("RODIN_ESSENTIALD_LOOPBACK_ACCEPT_FAIL {error}");
+                    eprintln!("ONYX_ESSENTIALD_LOOPBACK_ACCEPT_FAIL {error}");
                     std::thread::sleep(Duration::from_millis(100));
                 }
             }
@@ -5505,7 +5505,7 @@ pub fn handle_command(line: &str) -> String {
             return format!("ERR {error}");
         }
         if !service_control::enabled() {
-            return "ERR Rodin Essential is disabled; enable it in Settings".into();
+            return "ERR Onyx Essential is disabled; enable it in Settings".into();
         }
         if let Err(error) = capture_feature_original(cmd) {
             return format!("ERR {error}");
@@ -5826,7 +5826,7 @@ fn handle_enabled_command(line: &str) -> String {
 
 fn serve_authenticated_client<S: Read + Write>(mut stream: S, peer: u32, transport: i32) {
     if !client_uid_allowed(peer, configured_app_uid_policy()) {
-        eprintln!("RODIN_ESSENTIALD_PEER_REJECT unauthorized_uid");
+        eprintln!("ONYX_ESSENTIALD_PEER_REJECT unauthorized_uid");
         let _ = stream.write_all(b"ERR unauthorized peer\n");
         return;
     }
@@ -5882,7 +5882,7 @@ fn serve_client_with_transport(mut stream: UnixStream, transport: i32) {
     match peer_uid(&stream) {
         Ok(peer) => serve_authenticated_client(stream, peer, transport),
         Err(error) => {
-            eprintln!("RODIN_ESSENTIALD_PEER_REJECT {error}");
+            eprintln!("ONYX_ESSENTIALD_PEER_REJECT {error}");
             let _ = stream.write_all(b"ERR peer credentials unavailable\n");
         }
     }
@@ -5892,7 +5892,7 @@ fn serve_loopback_client(mut stream: TcpStream) {
     match tcp_peer_uid(&stream) {
         Ok(peer) => serve_authenticated_client(stream, peer, 3),
         Err(error) => {
-            eprintln!("RODIN_ESSENTIALD_LOOPBACK_PEER_REJECT {error}");
+            eprintln!("ONYX_ESSENTIALD_LOOPBACK_PEER_REJECT {error}");
             let _ = stream.write_all(b"ERR peer credentials unavailable\n");
         }
     }
@@ -6024,9 +6024,9 @@ mod tests {
     #[test]
     fn native_socket_resolves_and_accepts_the_package_app_id_for_every_user() {
         let packages = "android 1000 0 /data/user/0/android platform 0 1 1 1 0\n\
-io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodinessential default 0 1 1 1 0\n";
+io.github.davvv98.onyxessential 10228 0 /data/user/0/io.github.davvv98.onyxessential default 0 1 1 1 0\n";
         assert_eq!(
-            package_app_id_from_packages_list(packages, "io.github.neeschal.rodinessential"),
+            package_app_id_from_packages_list(packages, "io.github.davvv98.onyxessential"),
             Some(10_228)
         );
         let policy = AppUidPolicy::EnforceAppId(10_228);
@@ -6040,7 +6040,7 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
     }
 
     #[test]
-    fn maps_every_charging_profile_to_rodins_verified_fcc_ceiling() {
+    fn maps_every_charging_profile_to_onyxs_verified_fcc_ceiling() {
         assert!(valid_charging_profile(0));
         assert!(valid_charging_profile(25));
         assert!(valid_charging_profile(33));
@@ -6089,12 +6089,12 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
     fn bounds_external_framework_commands() {
         let output = run_process_with_timeout(
             "/bin/sh",
-            &["-c", "printf rodin"],
+            &["-c", "printf onyx"],
             std::time::Duration::from_secs(1),
         )
         .unwrap();
         assert!(output.status.success());
-        assert_eq!(output.stdout, b"rodin");
+        assert_eq!(output.stdout, b"onyx");
 
         let started = std::time::Instant::now();
         let error =
@@ -6130,7 +6130,7 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
     }
 
     #[test]
-    fn formats_rodin_vendor_cpu_frequency_requests_per_policy() {
+    fn formats_onyx_vendor_cpu_frequency_requests_per_policy() {
         assert_eq!(mi_thermal_cpu_limit_request(0, 2100), "cpu0 2100000");
         assert_eq!(mi_thermal_cpu_limit_request(4, 3000), "cpu4 3000000");
         assert_eq!(mi_thermal_cpu_limit_request(7, 3250), "cpu7 3250000");
@@ -6148,7 +6148,7 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
     }
 
     #[test]
-    fn detects_both_rodin_touch_panel_families() {
+    fn detects_both_onyx_touch_panel_families() {
         assert_eq!(classify_touch_panel_version("driver version: gt9916"), 1);
         assert_eq!(classify_touch_panel_version("Goodix GDIX algorithm"), 1);
         assert_eq!(classify_touch_panel_version("FocalTech FT3683G"), 2);
@@ -6156,7 +6156,7 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
     }
 
     #[test]
-    fn finds_rodin_thp_timing_block_without_a_fixed_address() {
+    fn finds_onyx_thp_timing_block_without_a_fixed_address() {
         let mut bytes = vec![0u8; 0x80];
         let offset = 0x10;
         put_u16(&mut bytes, offset, 135);
@@ -6196,7 +6196,7 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
     }
 
     #[test]
-    fn parses_rodin_ged_current_opp() {
+    fn parses_onyx_ged_current_opp() {
         assert_eq!(parse_ged_current_frequency_mhz("40 260000\n"), Some(260));
         assert_eq!(parse_ged_current_frequency_mhz("0 1300000\n"), Some(1300));
     }

@@ -1,9 +1,9 @@
-enum RodinConnectionState {
+enum OnyxConnectionState {
   connecting,
   online,
   offline;
 
-  static RodinConnectionState fromNative(int status) => switch (status) {
+  static OnyxConnectionState fromNative(int status) => switch (status) {
     1 => online,
     0 => offline,
     _ => connecting,

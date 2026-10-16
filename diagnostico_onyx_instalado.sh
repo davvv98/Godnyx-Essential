@@ -5,10 +5,10 @@ id
 getenforce
 echo '=== MODULO Y PROCESOS ==='
 cat /data/adb/modules/nees_rodin_essential_backend/module.prop 2>/dev/null
-pidof rodin_daemon
-ps -AZ 2>/dev/null | grep -E 'rodin_daemon|rodinessential'
+pidof onyx_daemon
+ps -AZ 2>/dev/null | grep -E 'onyx_daemon|onyxessential'
 echo '=== SNAPSHOT DAEMON ==='
-CTL=/data/adb/modules/nees_rodin_essential_backend/bin/rodin_ctl
+CTL=/data/adb/modules/nees_rodin_essential_backend/bin/onyx_ctl
 if [ -x "$CTL" ]; then
     if command -v timeout >/dev/null 2>&1; then timeout 12 "$CTL" GET snapshot; else echo 'Sin timeout: se omite IPC para evitar bloqueo'; fi
 fi
@@ -16,9 +16,9 @@ echo
 echo '=== LOG DAEMON ==='
 tail -n 90 /data/adb/onyx-essential/backend.log 2>/dev/null
 echo '=== LOG APP ==='
-logcat -d -v brief -s RodinEssential '*:S' 2>/dev/null | tail -n 100
+logcat -d -v brief -s OnyxEssential '*:S' 2>/dev/null | tail -n 100
 echo '=== DENEGACIONES RECIENTES ==='
-logcat -d -b all -v brief 2>/dev/null | grep -i 'avc: denied' | grep -iE 'rodin|kgsl|cpufreq|displayfeature|touchfeature' | tail -n 35
+logcat -d -b all -v brief 2>/dev/null | grep -i 'avc: denied' | grep -iE 'onyx|kgsl|cpufreq|displayfeature|touchfeature' | tail -n 35
 echo '=== GPU ==='
 for n in cur_freq min_freq max_freq governor available_frequencies available_governors; do
     f="/sys/class/kgsl/kgsl-3d0/devfreq/$n"

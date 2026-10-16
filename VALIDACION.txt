@@ -1,8 +1,9 @@
-Xiaomi Sconfig / onyx.3
+Onyx identity + Sconfig UI / onyx.4
 103 unitarias + 3 integraciones PASS.
-Android ARM64 host + daemon: cargo check PASS.
-Dart format main.dart PASS.
+cargo check --locked Android ARM64 host+daemon PASS (31 avisos de código legado sin uso).
+Dart format main.dart + onyx_backend.dart PASS.
+XML/package/JNI mapping PASS.
 Contratos módulo/versión/watchdog PASS.
-Selector: 0,6,18,50,56,68 y OEM restaurar original.
-Prueba física aportada por usuario: modo6 libera GPU1150. Otras opciones no validadas en teléfono.
-APK nuevo: no compilado/instalado en esta sesión.
+17 scripts bash -n PASS; workflow YAML + comandos run PASS.
+Iconos y mipmaps nuevos inspeccionados; PNG maestro generado y variantes integradas.
+APK completo y UI renderizada en teléfono: no probados en esta sesión.

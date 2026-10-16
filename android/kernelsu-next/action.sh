@@ -1,62 +1,62 @@
 #!/system/bin/sh
 
 MODDIR=${0%/*}
-RODIN_CTL="$MODDIR/bin/rodin_ctl"
+ONYX_CTL="$MODDIR/bin/onyx_ctl"
 
-echo "Rodin Essential"
+echo "Onyx Essential"
 echo ""
 
 if [ -f "$MODDIR/rom-native-mode" ]; then
     echo "Backend mode: ROM-native update layer"
-    echo "Native init service: $(getprop init.svc.rodin_daemon 2>/dev/null)"
+    echo "Native init service: $(getprop init.svc.onyx_daemon 2>/dev/null)"
 else
     echo "Backend mode: standalone root module"
 fi
 
-if /system/bin/pm path io.github.neeschal.rodinessential >/dev/null 2>&1; then
+if /system/bin/pm path io.github.davvv98.onyxessential >/dev/null 2>&1; then
     echo "App: installed"
 else
     echo "App: missing; flash the module again from your root manager"
 fi
 
-RODIN_PIDS="$(pidof rodin_daemon 2>/dev/null)"
-if [ -z "$RODIN_PIDS" ]; then
+ONYX_PIDS="$(pidof onyx_daemon 2>/dev/null)"
+if [ -z "$ONYX_PIDS" ]; then
     echo "Daemon: waiting for activation"
     echo "Install the module and reboot when you are ready."
     exit 0
 fi
 
-RODIN_PING="$($RODIN_CTL PING 2>&1)"
-case "$RODIN_PING" in
+ONYX_PING="$($ONYX_CTL PING 2>&1)"
+case "$ONYX_PING" in
     "OK PONG "*)
         echo "Daemon: healthy"
-        echo "Daemon PID: $RODIN_PIDS"
-        echo "Protocol: ${RODIN_PING#OK PONG }"
-        RODIN_PRIMARY_PID="${RODIN_PIDS%% *}"
-        RODIN_DAEMON_CONTEXT="$(cat "/proc/$RODIN_PRIMARY_PID/attr/current" 2>/dev/null)"
-        [ -n "$RODIN_DAEMON_CONTEXT" ] && echo "Daemon SELinux: $RODIN_DAEMON_CONTEXT"
+        echo "Daemon PID: $ONYX_PIDS"
+        echo "Protocol: ${ONYX_PING#OK PONG }"
+        ONYX_PRIMARY_PID="${ONYX_PIDS%% *}"
+        ONYX_DAEMON_CONTEXT="$(cat "/proc/$ONYX_PRIMARY_PID/attr/current" 2>/dev/null)"
+        [ -n "$ONYX_DAEMON_CONTEXT" ] && echo "Daemon SELinux: $ONYX_DAEMON_CONTEXT"
         ;;
     *)
         echo "Daemon: running but did not answer"
-        echo "$RODIN_PING"
+        echo "$ONYX_PING"
         exit 1
         ;;
 esac
 
-RODIN_SNAPSHOT="$($RODIN_CTL GET snapshot 2>/dev/null)"
-RODIN_APP_CLIENT_SEEN="$(printf '%s\n' "$RODIN_SNAPSHOT" | tr ';' '\n' \
+ONYX_SNAPSHOT="$($ONYX_CTL GET snapshot 2>/dev/null)"
+ONYX_APP_CLIENT_SEEN="$(printf '%s\n' "$ONYX_SNAPSHOT" | tr ';' '\n' \
     | sed -n 's/^app_client_seen=//p' | head -n 1)"
-RODIN_APP_CLIENT_TRANSPORT="$(printf '%s\n' "$RODIN_SNAPSHOT" | tr ';' '\n' \
+ONYX_APP_CLIENT_TRANSPORT="$(printf '%s\n' "$ONYX_SNAPSHOT" | tr ';' '\n' \
     | sed -n 's/^app_client_transport=//p' | head -n 1)"
-if [ "$RODIN_APP_CLIENT_SEEN" = "1" ]; then
-    case "$RODIN_APP_CLIENT_TRANSPORT" in
+if [ "$ONYX_APP_CLIENT_SEEN" = "1" ]; then
+    case "$ONYX_APP_CLIENT_TRANSPORT" in
         3) echo "App IPC: verified (authenticated loopback)" ;;
         2) echo "App IPC: verified (daemon-initiated)" ;;
         1) echo "App IPC: verified (direct policy)" ;;
         *) echo "App IPC: verified" ;;
     esac
 else
-    echo "App IPC: not verified yet; open Rodin Essential once"
+    echo "App IPC: not verified yet; open Onyx Essential once"
 fi
 
-echo "$RODIN_SNAPSHOT" | tr ';' '\n' | grep -E '^(io|touch|touch_ack|touch_resampler_ready|perf)=' 2>/dev/null
+echo "$ONYX_SNAPSHOT" | tr ';' '\n' | grep -E '^(io|touch|touch_ack|touch_resampler_ready|perf)=' 2>/dev/null

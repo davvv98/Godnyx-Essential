@@ -1,132 +1,132 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-RODIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-RODIN_STAMP="$(date +%Y%m%d-%H%M%S)"
-RODIN_DESTINATION="${1:-$RODIN_ROOT/dist/aosp/RodinEssential-$RODIN_STAMP}"
-RODIN_BUILD_DIR="$RODIN_ROOT/out/aosp-export/$RODIN_STAMP/build"
-RODIN_TEMPLATE="$RODIN_ROOT/android/aosp"
-RODIN_SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/Android/Sdk}}"
-RODIN_NDK_VERSION="$(find "$RODIN_SDK_ROOT/ndk" -mindepth 1 -maxdepth 1 \
+ONYX_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ONYX_STAMP="$(date +%Y%m%d-%H%M%S)"
+ONYX_DESTINATION="${1:-$ONYX_ROOT/dist/aosp/OnyxEssential-$ONYX_STAMP}"
+ONYX_BUILD_DIR="$ONYX_ROOT/out/aosp-export/$ONYX_STAMP/build"
+ONYX_TEMPLATE="$ONYX_ROOT/android/aosp"
+ONYX_SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/Android/Sdk}}"
+ONYX_NDK_VERSION="$(find "$ONYX_SDK_ROOT/ndk" -mindepth 1 -maxdepth 1 \
     -type d -printf '%f\n' | sort -V | tail -1)"
-RODIN_STRIP="$RODIN_SDK_ROOT/ndk/$RODIN_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
+ONYX_STRIP="$ONYX_SDK_ROOT/ndk/$ONYX_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
 
-[ -n "${RODIN_KEYSTORE:-}" ] || {
-    echo "RODIN_KEYSTORE is required for a reproducibly signed AOSP bundle." >&2
+[ -n "${ONYX_KEYSTORE:-}" ] || {
+    echo "ONYX_KEYSTORE is required for a reproducibly signed AOSP bundle." >&2
     echo "ROM maintainers must keep the same private key for every update." >&2
     exit 1
 }
-[ -f "$RODIN_KEYSTORE" ] || {
-    echo "RODIN_KEYSTORE does not exist: $RODIN_KEYSTORE" >&2
+[ -f "$ONYX_KEYSTORE" ] || {
+    echo "ONYX_KEYSTORE does not exist: $ONYX_KEYSTORE" >&2
     exit 1
 }
 
-for RODIN_TOOL in openssl readelf sha256sum unzip; do
-    command -v "$RODIN_TOOL" >/dev/null 2>&1 || {
-        echo "Missing AOSP export tool: $RODIN_TOOL" >&2
+for ONYX_TOOL in openssl readelf sha256sum unzip; do
+    command -v "$ONYX_TOOL" >/dev/null 2>&1 || {
+        echo "Missing AOSP export tool: $ONYX_TOOL" >&2
         exit 1
     }
 done
-[ -x "$RODIN_STRIP" ] || {
-    echo "Missing Android LLVM strip tool: $RODIN_STRIP" >&2
+[ -x "$ONYX_STRIP" ] || {
+    echo "Missing Android LLVM strip tool: $ONYX_STRIP" >&2
     exit 1
 }
 
-"$RODIN_ROOT/tools/test-aosp-integration.sh"
-"$RODIN_ROOT/tools/test-release-sync.sh"
+"$ONYX_ROOT/tools/test-aosp-integration.sh"
+"$ONYX_ROOT/tools/test-release-sync.sh"
 
-if [ -e "$RODIN_DESTINATION" ]; then
-    echo "Destination already exists: $RODIN_DESTINATION" >&2
+if [ -e "$ONYX_DESTINATION" ]; then
+    echo "Destination already exists: $ONYX_DESTINATION" >&2
     exit 1
 fi
 
-RODIN_BUILD_ONLY=1 \
-RODIN_OUTPUT_DIR="$RODIN_BUILD_DIR" \
-    "$RODIN_ROOT/build-and-install.sh"
+ONYX_BUILD_ONLY=1 \
+ONYX_OUTPUT_DIR="$ONYX_BUILD_DIR" \
+    "$ONYX_ROOT/build-and-install.sh"
 
-RODIN_APK="$RODIN_BUILD_DIR/Rodin-Essential.apk"
-RODIN_DAEMON="$RODIN_BUILD_DIR/host-cargo/aarch64-linux-android/release/rodin_daemon"
-RODIN_CTL="$RODIN_BUILD_DIR/host-cargo/aarch64-linux-android/release/rodin_ctl"
-RODIN_BUILD_TOOLS="$(find "$RODIN_SDK_ROOT/build-tools" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -1)"
-RODIN_APKSIGNER="$RODIN_SDK_ROOT/build-tools/$RODIN_BUILD_TOOLS/apksigner"
+ONYX_APK="$ONYX_BUILD_DIR/Onyx-Essential.apk"
+ONYX_DAEMON="$ONYX_BUILD_DIR/host-cargo/aarch64-linux-android/release/onyx_daemon"
+ONYX_CTL="$ONYX_BUILD_DIR/host-cargo/aarch64-linux-android/release/onyx_ctl"
+ONYX_BUILD_TOOLS="$(find "$ONYX_SDK_ROOT/build-tools" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -1)"
+ONYX_APKSIGNER="$ONYX_SDK_ROOT/build-tools/$ONYX_BUILD_TOOLS/apksigner"
 
-[ -x "$RODIN_APKSIGNER" ] || {
-    echo "Missing Android APK signer: $RODIN_APKSIGNER" >&2
+[ -x "$ONYX_APKSIGNER" ] || {
+    echo "Missing Android APK signer: $ONYX_APKSIGNER" >&2
     exit 1
 }
 
-for RODIN_ARTIFACT in "$RODIN_APK" "$RODIN_DAEMON" "$RODIN_CTL"; do
-    [ -f "$RODIN_ARTIFACT" ] || {
-        echo "Missing AOSP artifact: $RODIN_ARTIFACT" >&2
+for ONYX_ARTIFACT in "$ONYX_APK" "$ONYX_DAEMON" "$ONYX_CTL"; do
+    [ -f "$ONYX_ARTIFACT" ] || {
+        echo "Missing AOSP artifact: $ONYX_ARTIFACT" >&2
         exit 1
     }
 done
 
-mkdir -p "$RODIN_DESTINATION/prebuilt" "$RODIN_DESTINATION/docs"
-cp -a "$RODIN_TEMPLATE/Android.bp" "$RODIN_DESTINATION/Android.bp"
-cp -a "$RODIN_TEMPLATE/rodin-essential.mk" "$RODIN_DESTINATION/rodin-essential.mk"
-cp -a "$RODIN_TEMPLATE/BoardConfigRodinEssential.mk" "$RODIN_DESTINATION/BoardConfigRodinEssential.mk"
-cp -a "$RODIN_TEMPLATE/rodin_daemon.rc" "$RODIN_DESTINATION/rodin_daemon.rc"
-cp -a "$RODIN_TEMPLATE/sepolicy" "$RODIN_DESTINATION/sepolicy"
-cp -a "$RODIN_TEMPLATE/README.md" "$RODIN_DESTINATION/README.md"
-cp -a "$RODIN_ROOT/docs/ROM_INTEGRATION.md" "$RODIN_DESTINATION/docs/ROM_INTEGRATION.md"
-cp -a "$RODIN_ROOT/docs/UNPACKED_ROM_INTEGRATION.md" "$RODIN_DESTINATION/docs/UNPACKED_ROM_INTEGRATION.md"
-cp -a "$RODIN_ROOT/docs/UNPACKED_ROM_PORTER_GUIDE.md" "$RODIN_DESTINATION/docs/UNPACKED_ROM_PORTER_GUIDE.md"
-mkdir -p "$RODIN_DESTINATION/tools"
-cp -a "$RODIN_ROOT/tools/prepare-aosp-touch-policy.py" "$RODIN_DESTINATION/tools/prepare-aosp-touch-policy.py"
-install -m 0644 "$RODIN_APK" "$RODIN_DESTINATION/prebuilt/RodinEssential.apk"
-install -m 0755 "$RODIN_DAEMON" "$RODIN_DESTINATION/prebuilt/rodin_daemon"
-install -m 0755 "$RODIN_CTL" "$RODIN_DESTINATION/prebuilt/rodin_ctl"
-"$RODIN_STRIP" --strip-unneeded "$RODIN_DESTINATION/prebuilt/rodin_daemon"
-"$RODIN_STRIP" --strip-unneeded "$RODIN_DESTINATION/prebuilt/rodin_ctl"
+mkdir -p "$ONYX_DESTINATION/prebuilt" "$ONYX_DESTINATION/docs"
+cp -a "$ONYX_TEMPLATE/Android.bp" "$ONYX_DESTINATION/Android.bp"
+cp -a "$ONYX_TEMPLATE/onyx-essential.mk" "$ONYX_DESTINATION/onyx-essential.mk"
+cp -a "$ONYX_TEMPLATE/BoardConfigOnyxEssential.mk" "$ONYX_DESTINATION/BoardConfigOnyxEssential.mk"
+cp -a "$ONYX_TEMPLATE/onyx_daemon.rc" "$ONYX_DESTINATION/onyx_daemon.rc"
+cp -a "$ONYX_TEMPLATE/sepolicy" "$ONYX_DESTINATION/sepolicy"
+cp -a "$ONYX_TEMPLATE/README.md" "$ONYX_DESTINATION/README.md"
+cp -a "$ONYX_ROOT/docs/ROM_INTEGRATION.md" "$ONYX_DESTINATION/docs/ROM_INTEGRATION.md"
+cp -a "$ONYX_ROOT/docs/UNPACKED_ROM_INTEGRATION.md" "$ONYX_DESTINATION/docs/UNPACKED_ROM_INTEGRATION.md"
+cp -a "$ONYX_ROOT/docs/UNPACKED_ROM_PORTER_GUIDE.md" "$ONYX_DESTINATION/docs/UNPACKED_ROM_PORTER_GUIDE.md"
+mkdir -p "$ONYX_DESTINATION/tools"
+cp -a "$ONYX_ROOT/tools/prepare-aosp-touch-policy.py" "$ONYX_DESTINATION/tools/prepare-aosp-touch-policy.py"
+install -m 0644 "$ONYX_APK" "$ONYX_DESTINATION/prebuilt/OnyxEssential.apk"
+install -m 0755 "$ONYX_DAEMON" "$ONYX_DESTINATION/prebuilt/onyx_daemon"
+install -m 0755 "$ONYX_CTL" "$ONYX_DESTINATION/prebuilt/onyx_ctl"
+"$ONYX_STRIP" --strip-unneeded "$ONYX_DESTINATION/prebuilt/onyx_daemon"
+"$ONYX_STRIP" --strip-unneeded "$ONYX_DESTINATION/prebuilt/onyx_ctl"
 
-"$RODIN_APKSIGNER" verify --print-certs-pem "$RODIN_APK" 2>/dev/null \
+"$ONYX_APKSIGNER" verify --print-certs-pem "$ONYX_APK" 2>/dev/null \
     | sed -n '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/p' \
-    >"$RODIN_DESTINATION/prebuilt/RodinEssential.x509.pem"
-openssl x509 -in "$RODIN_DESTINATION/prebuilt/RodinEssential.x509.pem" \
+    >"$ONYX_DESTINATION/prebuilt/OnyxEssential.x509.pem"
+openssl x509 -in "$ONYX_DESTINATION/prebuilt/OnyxEssential.x509.pem" \
     -noout -subject >/dev/null
-RODIN_APK_CERT_DIGEST="$("$RODIN_APKSIGNER" verify --print-certs "$RODIN_APK" \
+ONYX_APK_CERT_DIGEST="$("$ONYX_APKSIGNER" verify --print-certs "$ONYX_APK" \
     2>/dev/null | sed -n 's/^.*certificate SHA-256 digest: //p' | head -n 1 \
     | tr '[:upper:]' '[:lower:]')"
-RODIN_PEM_CERT_DIGEST="$(openssl x509 \
-    -in "$RODIN_DESTINATION/prebuilt/RodinEssential.x509.pem" -outform DER \
+ONYX_PEM_CERT_DIGEST="$(openssl x509 \
+    -in "$ONYX_DESTINATION/prebuilt/OnyxEssential.x509.pem" -outform DER \
     | sha256sum | awk '{print $1}')"
-[[ "$RODIN_APK_CERT_DIGEST" =~ ^[0-9a-f]{64}$ ]] || {
+[[ "$ONYX_APK_CERT_DIGEST" =~ ^[0-9a-f]{64}$ ]] || {
     echo "Unable to read the exported APK certificate" >&2
     exit 1
 }
-[ "$RODIN_APK_CERT_DIGEST" = "$RODIN_PEM_CERT_DIGEST" ] || {
+[ "$ONYX_APK_CERT_DIGEST" = "$ONYX_PEM_CERT_DIGEST" ] || {
     echo "Exported APK and SELinux public certificate do not match" >&2
     exit 1
 }
-openssl x509 -in "$RODIN_DESTINATION/prebuilt/RodinEssential.x509.pem" \
+openssl x509 -in "$ONYX_DESTINATION/prebuilt/OnyxEssential.x509.pem" \
     -noout -subject -issuer -dates -fingerprint -sha256 \
-    >"$RODIN_DESTINATION/SIGNING-CERTIFICATE.txt"
+    >"$ONYX_DESTINATION/SIGNING-CERTIFICATE.txt"
 
-ANDROID_SDK_ROOT="$RODIN_SDK_ROOT" bash "$RODIN_ROOT/tools/check-platform-dex.sh" "$RODIN_DESTINATION/prebuilt/RodinEssential.apk"
+ANDROID_SDK_ROOT="$ONYX_SDK_ROOT" bash "$ONYX_ROOT/tools/check-platform-dex.sh" "$ONYX_DESTINATION/prebuilt/OnyxEssential.apk"
 
-file "$RODIN_DESTINATION/prebuilt/rodin_daemon" | grep -q 'ARM aarch64'
-file "$RODIN_DESTINATION/prebuilt/rodin_ctl" | grep -q 'ARM aarch64'
+file "$ONYX_DESTINATION/prebuilt/onyx_daemon" | grep -q 'ARM aarch64'
+file "$ONYX_DESTINATION/prebuilt/onyx_ctl" | grep -q 'ARM aarch64'
 
-RODIN_DAEMON_NEEDED="$(readelf -d "$RODIN_DESTINATION/prebuilt/rodin_daemon" \
+ONYX_DAEMON_NEEDED="$(readelf -d "$ONYX_DESTINATION/prebuilt/onyx_daemon" \
     | sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' | LC_ALL=C sort)"
-RODIN_CTL_NEEDED="$(readelf -d "$RODIN_DESTINATION/prebuilt/rodin_ctl" \
+ONYX_CTL_NEEDED="$(readelf -d "$ONYX_DESTINATION/prebuilt/onyx_ctl" \
     | sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' | LC_ALL=C sort)"
-RODIN_EXPECTED_DAEMON_NEEDED=$'libbinder_ndk.so\nlibc.so\nlibdl.so'
-RODIN_EXPECTED_CTL_NEEDED=$'libc.so\nlibdl.so'
-[ "$RODIN_DAEMON_NEEDED" = "$RODIN_EXPECTED_DAEMON_NEEDED" ] || {
-    echo "rodin_daemon dependencies do not match Android.bp" >&2
-    printf '%s\n' "$RODIN_DAEMON_NEEDED" >&2
+ONYX_EXPECTED_DAEMON_NEEDED=$'libbinder_ndk.so\nlibc.so\nlibdl.so'
+ONYX_EXPECTED_CTL_NEEDED=$'libc.so\nlibdl.so'
+[ "$ONYX_DAEMON_NEEDED" = "$ONYX_EXPECTED_DAEMON_NEEDED" ] || {
+    echo "onyx_daemon dependencies do not match Android.bp" >&2
+    printf '%s\n' "$ONYX_DAEMON_NEEDED" >&2
     exit 1
 }
-[ "$RODIN_CTL_NEEDED" = "$RODIN_EXPECTED_CTL_NEEDED" ] || {
-    echo "rodin_ctl dependencies do not match Android.bp" >&2
-    printf '%s\n' "$RODIN_CTL_NEEDED" >&2
+[ "$ONYX_CTL_NEEDED" = "$ONYX_EXPECTED_CTL_NEEDED" ] || {
+    echo "onyx_ctl dependencies do not match Android.bp" >&2
+    printf '%s\n' "$ONYX_CTL_NEEDED" >&2
     exit 1
 }
 
 (
-    cd "$RODIN_DESTINATION"
+    cd "$ONYX_DESTINATION"
     find . -type f ! -name SHA256SUMS -print0 \
         | LC_ALL=C sort -z \
         | xargs -0 sha256sum \
@@ -134,5 +134,5 @@ RODIN_EXPECTED_CTL_NEEDED=$'libc.so\nlibdl.so'
 )
 
 echo "AOSP_EXPORT=PASS"
-echo "APK_CERT_SHA256=$RODIN_APK_CERT_DIGEST"
-echo "DIRECTORY=$RODIN_DESTINATION"
+echo "APK_CERT_SHA256=$ONYX_APK_CERT_DIGEST"
+echo "DIRECTORY=$ONYX_DESTINATION"

@@ -41,11 +41,12 @@ jobs:
       - name: Validate source layout
         run: |
           set -euo pipefail
+          bash tools/cleanup-legacy-paths.sh
           test -f Cargo.toml
           test -f runtime/daemon-rust/src/onyx.rs
           test -f ui/flutter/pubspec.yaml
           test -f tools/build-kernelsu-next-module.sh
-          grep -Fq 'onyx.3' runtime/daemon-rust/src/lib.rs
+          grep -Fq 'onyx.4' runtime/daemon-rust/src/lib.rs
 
       - name: Free disk space for engine sources
         run: |
@@ -68,7 +69,8 @@ jobs:
       - name: Run daemon and packaging checks
         run: |
           set -euo pipefail
-          cargo test --locked -p rodin-essential-daemon
+          python3 tools/tests/test_daemon_binary_layout.py
+          cargo test --locked -p onyx-essential-daemon
           bash tools/test-root-module-contract.sh
           bash tools/test-release-sync.sh
           bash tools/test-kernelsu-watchdog-lock.sh
@@ -177,7 +179,7 @@ jobs:
       - name: Build pinned custom Flutter engine
         if: steps.engine.outputs.hit != 'true'
         env:
-          RODIN_FLUTTER_ENGINE_SRC: ${{ env.ENGINE_CHECKOUT }}/engine/src
+          ONYX_FLUTTER_ENGINE_SRC: ${{ env.ENGINE_CHECKOUT }}/engine/src
           EXPECTED_ENGINE_REV: ${{ steps.flutter.outputs.engine_rev }}
         run: |
           set -euo pipefail
@@ -204,14 +206,14 @@ jobs:
 
       - name: Build signed KernelSU Next / Magisk module
         env:
-          RODIN_NDK_VERSION: ${{ env.ANDROID_NDK }}
-          RODIN_BUILD_TOOLS_VERSION: ${{ env.ANDROID_BUILD_TOOLS }}
-          RODIN_PLATFORM_VERSION: '36'
-          RODIN_KEYSTORE: ${{ steps.signing.outputs.keystore }}
-          RODIN_EXPECTED_CERT_SHA256: ${{ steps.signing.outputs.cert_sha256 }}
-          RODIN_KEY_ALIAS: ${{ secrets.ONYX_KEY_ALIAS || 'onyx-essential' }}
-          RODIN_KEYSTORE_PASS: ${{ secrets.ONYX_KEYSTORE_PASS || 'android' }}
-          RODIN_KEY_PASS: ${{ secrets.ONYX_KEY_PASS || secrets.ONYX_KEYSTORE_PASS || 'android' }}
+          ONYX_NDK_VERSION: ${{ env.ANDROID_NDK }}
+          ONYX_BUILD_TOOLS_VERSION: ${{ env.ANDROID_BUILD_TOOLS }}
+          ONYX_PLATFORM_VERSION: '36'
+          ONYX_KEYSTORE: ${{ steps.signing.outputs.keystore }}
+          ONYX_EXPECTED_CERT_SHA256: ${{ steps.signing.outputs.cert_sha256 }}
+          ONYX_KEY_ALIAS: ${{ secrets.ONYX_KEY_ALIAS || 'onyx-essential' }}
+          ONYX_KEYSTORE_PASS: ${{ secrets.ONYX_KEYSTORE_PASS || 'android' }}
+          ONYX_KEY_PASS: ${{ secrets.ONYX_KEY_PASS || secrets.ONYX_KEYSTORE_PASS || 'android' }}
         run: bash tools/build-kernelsu-next-module.sh
 
       - name: Collect APK, module and checksums
@@ -221,7 +223,7 @@ jobs:
           mapfile -t MODULES < <(find out/kernelsu-next -mindepth 2 -maxdepth 2 -type f -name '*.zip')
           test "${#MODULES[@]}" -eq 1
           cp "${MODULES[0]}" out/onyx-artifacts/Onyx-Essential-KernelSU-Next-Magisk.zip
-          unzip -p "${MODULES[0]}" app/RodinEssential.apk > out/onyx-artifacts/Onyx-Essential.apk
+          unzip -p "${MODULES[0]}" app/OnyxEssential.apk > out/onyx-artifacts/Onyx-Essential.apk
           test -s out/onyx-artifacts/Onyx-Essential.apk
           cd out/onyx-artifacts
           sha256sum ./*.zip ./*.apk > SHA256SUMS.txt

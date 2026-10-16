@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package only Rodin integration inputs from an already verified module ZIP."""
+"""Package only Onyx integration inputs from an already verified module ZIP."""
 import argparse
 import base64
 import hashlib
@@ -29,16 +29,16 @@ def build(module, output, apksigner):
         version = re.search(r'^version=v(\d+\.\d+\.\d+)$', prop, re.M)[1]
         code = int(re.search(r'^versionCode=(\d+)$', prop, re.M)[1])
         for source, relative in {
-            'app/RodinEssential.apk': 'product/app/RodinEssential/RodinEssential.apk',
-            'bin/rodin_daemon': 'product/bin/rodin_daemon',
-            'bin/rodin_ctl': 'product/bin/rodin_ctl',
+            'app/OnyxEssential.apk': 'product/app/OnyxEssential/OnyxEssential.apk',
+            'bin/onyx_daemon': 'product/bin/onyx_daemon',
+            'bin/onyx_ctl': 'product/bin/onyx_ctl',
         }.items():
             data = archive.read(source)
             target = stage / 'copy-to-extracted-rom' / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
             payload[source] = hashlib.sha256(data).hexdigest()
-    apk = stage / 'copy-to-extracted-rom/product/app/RodinEssential/RodinEssential.apk'
+    apk = stage / 'copy-to-extracted-rom/product/app/OnyxEssential/OnyxEssential.apk'
     # The production tile and predictive Back use two framework adapters.
     # Validate their strict allowlist instead of the retired zero-DEX contract.
     environment = os.environ.copy()
@@ -53,47 +53,47 @@ def build(module, output, apksigner):
     assert signer_hash == (project / 'android/package/release-cert.sha256').read_text().strip(), 'Unexpected signer'
     write(stage / 'policy/certificate.der.hex', der.hex() + '\n')
     write(stage / 'policy/product_mac_permissions.additions.xml',
-          '<policy><signer signature="' + der.hex() + '"><package name="io.github.neeschal.rodinessential"><seinfo value="rodin_essential"/></package></signer></policy>\n')
+          '<policy><signer signature="' + der.hex() + '"><package name="io.github.davvv98.onyxessential"><seinfo value="onyx_essential"/></package></signer></policy>\n')
     for source, destination in {
-        'android/unpacked/rodin-native.cil': 'policy/rodin-essential.cil',
-        'android/aosp/rodin_daemon.rc': 'copy-to-extracted-rom/product/etc/init/rodin_daemon.rc',
+        'android/unpacked/onyx-native.cil': 'policy/onyx-essential.cil',
+        'android/aosp/onyx_daemon.rc': 'copy-to-extracted-rom/product/etc/init/onyx_daemon.rc',
         'tools/merge-unpacked-rom-policy.py': 'tools/merge-unpacked-rom-policy.py',
         'docs/UNPACKED_ROM_PORTER_GUIDE.md': 'FULL-GUIDE.md',
     }.items():
         write(stage / destination, (project / source).read_text())
     contexts = (
-        '/product/bin/rodin_daemon u:object_r:rodin_daemon_exec:s0\n'
-        '/data/system/rodin-essential(/.*)? u:object_r:rodin_daemon_data_file:s0\n')
+        '/product/bin/onyx_daemon u:object_r:onyx_daemon_exec:s0\n'
+        '/data/system/onyx-essential(/.*)? u:object_r:onyx_daemon_data_file:s0\n')
     write(stage / 'policy/product_file_contexts.additions', contexts)
     write(stage / 'policy/product_seapp_contexts.additions',
-          'user=_app seinfo=rodin_essential name=io.github.neeschal.rodinessential domain=rodin_app type=app_data_file levelFrom=all\n')
+          'user=_app seinfo=onyx_essential name=io.github.davvv98.onyxessential domain=onyx_app type=app_data_file levelFrom=all\n')
     write(stage / 'metadata/file_contexts.additions', contexts +
-          '/product/bin/rodin_ctl u:object_r:system_file:s0\n'
-          '/product/app/RodinEssential(/.*)? u:object_r:system_file:s0\n'
-          '/product/etc/init/rodin_daemon\\.rc u:object_r:system_file:s0\n')
-    entries = ['product/app/RodinEssential 0 0 0755']
+          '/product/bin/onyx_ctl u:object_r:system_file:s0\n'
+          '/product/app/OnyxEssential(/.*)? u:object_r:system_file:s0\n'
+          '/product/etc/init/onyx_daemon\\.rc u:object_r:system_file:s0\n')
+    entries = ['product/app/OnyxEssential 0 0 0755']
     for path in sorted((stage / 'copy-to-extracted-rom').rglob('*')):
         if path.is_file():
             relative = path.relative_to(stage / 'copy-to-extracted-rom').as_posix()
             entries.append(f"{relative} 0 0 {'0755' if path.parent.name == 'bin' else '0644'}")
     write(stage / 'metadata/fs_config.additions', '\n'.join(entries) + '\n')
     write(stage / 'README.txt',
-          f'Rodin Essential v{version} — ROM Integration\n\n'
-          'Not flashable. For extracted ROM images on Rodin devices.\n'
-          'Read FULL-GUIDE.md. Only Rodin payloads and policy additions are included.\n'
+          f'Onyx Essential v{version} — ROM Integration\n\n'
+          'Not flashable. For extracted ROM images on Onyx devices.\n'
+          'Read FULL-GUIDE.md. Only Onyx payloads and policy additions are included.\n'
           'Run the included merger against YOUR ROM policy before copying generated changes.\n'
           'Never replace a whole ROM policy with policy from another build.\n'
           'Root-manager-free operation uses Android init and dedicated SELinux domains.\n')
     write(stage / 'PACKAGE.json', json.dumps({
         'version': version, 'versionCode': code, 'protocol': '13.6',
         'apkSignerSha256': signer_hash, 'payload': payload,
-        'policyScope': 'Rodin-only additions; target policies are not included',
+        'policyScope': 'Onyx-only additions; target policies are not included',
         'sourceModuleSha256': hashlib.sha256(module.read_bytes()).hexdigest(),
     }, indent=2) + '\n')
     write(stage / 'SHA256SUMS', ''.join(
         f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(stage).as_posix()}\n'
         for path in sorted(stage.rglob('*')) if path.is_file()))
-    package = output / f'Rodin-Essential-ROM-Integration-v{version}.zip'
+    package = output / f'Onyx-Essential-ROM-Integration-v{version}.zip'
     with zipfile.ZipFile(package, 'w', zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(stage.rglob('*')):
             if not path.is_file():

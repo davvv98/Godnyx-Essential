@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:rodin_essential_ui/page_motion.dart';
-import 'package:rodin_essential_ui/root_pager.dart';
-import 'package:rodin_essential_ui/main.dart';
+import 'package:onyx_essential_ui/page_motion.dart';
+import 'package:onyx_essential_ui/root_pager.dart';
+import 'package:onyx_essential_ui/main.dart';
 
 void main() {
   testWidgets('settling back toward Home never crosses the adjacent layer', (
     tester,
   ) async {
     final controller = PageController();
-    final key = GlobalKey<RodinRootPagerState>();
+    final key = GlobalKey<OnyxRootPagerState>();
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: RodinRootPager(
+          body: OnyxRootPager(
             key: key,
             controller: controller,
             swipeEnabled: true,
@@ -56,11 +56,11 @@ void main() {
     tester,
   ) async {
     final controller = PageController();
-    final key = GlobalKey<RodinRootPagerState>();
+    final key = GlobalKey<OnyxRootPagerState>();
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: RodinRootPager(
+          body: OnyxRootPager(
             key: key,
             controller: controller,
             swipeEnabled: true,
@@ -118,7 +118,7 @@ void main() {
   });
 
   test('non-adjacent tab taps move only source and destination', () {
-    final handoff = RodinTabHandoff(
+    final handoff = OnyxTabHandoff(
       startPage: 0,
       target: 3,
       positions: <int, double>{0: 0},
@@ -129,14 +129,14 @@ void main() {
   });
 
   test('rapid reversal preserves the current page geometry', () {
-    final first = RodinTabHandoff(
+    final first = OnyxTabHandoff(
       startPage: 0,
       target: 3,
       positions: <int, double>{0: 0},
       direction: 1,
     );
     final positions = first.positionsAt(1.2);
-    final reverse = RodinTabHandoff(
+    final reverse = OnyxTabHandoff(
       startPage: 1.2,
       target: 0,
       positions: positions,
@@ -151,12 +151,12 @@ void main() {
     tester,
   ) async {
     final controller = PageController();
-    final key = GlobalKey<RodinRootPagerState>();
+    final key = GlobalKey<OnyxRootPagerState>();
     final creations = <int>[];
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: RodinRootPager(
+          body: OnyxRootPager(
             key: key,
             controller: controller,
             swipeEnabled: true,
@@ -194,10 +194,10 @@ void main() {
     final scope = find
         .ancestor(
           of: find.text('Page 0'),
-          matching: find.byType(RodinMotionViewportScope),
+          matching: find.byType(OnyxMotionViewportScope),
         )
         .first;
-    expect(tester.widget<RodinMotionViewportScope>(scope).inFlight, false);
+    expect(tester.widget<OnyxMotionViewportScope>(scope).inFlight, false);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
     controller.dispose();
@@ -211,7 +211,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: RodinRootPager(
+          body: OnyxRootPager(
             controller: controller,
             swipeEnabled: true,
             physics: const PageScrollPhysics(),
@@ -226,7 +226,7 @@ void main() {
       ),
     );
     await tester.fling(
-      find.byType(RodinRootPager),
+      find.byType(OnyxRootPager),
       const Offset(-600, 0),
       1200,
     );
@@ -246,7 +246,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: RodinRootPager(
+          body: OnyxRootPager(
             controller: controller,
             swipeEnabled: false,
             physics: const PageScrollPhysics(),
@@ -257,7 +257,7 @@ void main() {
         ),
       ),
     );
-    await tester.drag(find.byType(RodinRootPager), const Offset(-600, 0));
+    await tester.drag(find.byType(OnyxRootPager), const Offset(-600, 0));
     await tester.pumpAndSettle();
     expect(controller.page, 0);
     expect(tester.takeException(), isNull);
@@ -268,9 +268,9 @@ void main() {
   testWidgets('shell rapid A-B-A-C taps settle on the newest tab', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: RodinShell()));
+    await tester.pumpWidget(const MaterialApp(home: OnyxShell()));
     await tester.pump(const Duration(milliseconds: 100));
-    final dock = find.byType(RodinBottomBar);
+    final dock = find.byType(OnyxBottomBar);
     Future<void> tapTab(String label) async {
       await tester.tap(find.descendant(of: dock, matching: find.text(label)));
       await tester.pump();
@@ -283,8 +283,8 @@ void main() {
     await tapTab('Support');
     await tester.pumpAndSettle();
     expect(
-      tester.widget<RodinBottomBar>(dock).currentRoot,
-      RodinScreen.support,
+      tester.widget<OnyxBottomBar>(dock).currentRoot,
+      OnyxScreen.support,
     );
     expect(find.byType(SupportScreen), findsOneWidget);
     expect(find.byType(HomeScreen), findsNothing);
@@ -293,8 +293,8 @@ void main() {
     await tapTab('Support');
     await tester.pumpAndSettle();
     expect(
-      tester.widget<RodinBottomBar>(dock).currentRoot,
-      RodinScreen.support,
+      tester.widget<OnyxBottomBar>(dock).currentRoot,
+      OnyxScreen.support,
     );
     expect(tester.binding.hasScheduledFrame, false);
     await tester.pumpWidget(const SizedBox());
@@ -303,9 +303,9 @@ void main() {
   testWidgets('dock dragging can interrupt a direct tab handoff', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: RodinShell()));
+    await tester.pumpWidget(const MaterialApp(home: OnyxShell()));
     await tester.pump(const Duration(milliseconds: 100));
-    final dock = find.byType(RodinBottomBar);
+    final dock = find.byType(OnyxBottomBar);
     await tester.tap(
       find.descendant(of: dock, matching: find.text('Settings')),
     );
@@ -324,7 +324,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 40));
     await gesture.up();
     await tester.pumpAndSettle();
-    expect(tester.widget<RodinBottomBar>(dock).currentRoot, RodinScreen.hubs);
+    expect(tester.widget<OnyxBottomBar>(dock).currentRoot, OnyxScreen.hubs);
     expect(find.byType(HubsScreen), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
@@ -333,10 +333,10 @@ void main() {
   testWidgets('dock stays under a held finger between tabs, then reverses', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: RodinShell()));
+    await tester.pumpWidget(const MaterialApp(home: OnyxShell()));
     await tester.pump(const Duration(milliseconds: 100));
-    final dock = find.byType(RodinBottomBar);
-    final controller = tester.widget<RodinBottomBar>(dock).controller;
+    final dock = find.byType(OnyxBottomBar);
+    final controller = tester.widget<OnyxBottomBar>(dock).controller;
     final home = tester.getCenter(
       find.descendant(of: dock, matching: find.text('Home')),
     );
@@ -378,10 +378,10 @@ void main() {
   testWidgets('dock clamps edge holds and cancellation settles only once', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: RodinShell()));
+    await tester.pumpWidget(const MaterialApp(home: OnyxShell()));
     await tester.pump(const Duration(milliseconds: 100));
-    final dock = find.byType(RodinBottomBar);
-    final controller = tester.widget<RodinBottomBar>(dock).controller;
+    final dock = find.byType(OnyxBottomBar);
+    final controller = tester.widget<OnyxBottomBar>(dock).controller;
     final home = tester.getCenter(
       find.descendant(of: dock, matching: find.text('Home')),
     );
@@ -416,19 +416,19 @@ void main() {
       const MaterialApp(
         home: MediaQuery(
           data: MediaQueryData(disableAnimations: true),
-          child: RodinShell(),
+          child: OnyxShell(),
         ),
       ),
     );
     await tester.pump(const Duration(milliseconds: 100));
-    final dock = find.byType(RodinBottomBar);
+    final dock = find.byType(OnyxBottomBar);
     await tester.tap(
       find.descendant(of: dock, matching: find.text('Settings')),
     );
     await tester.pumpAndSettle();
     expect(
-      tester.widget<RodinBottomBar>(dock).currentRoot,
-      RodinScreen.settings,
+      tester.widget<OnyxBottomBar>(dock).currentRoot,
+      OnyxScreen.settings,
     );
     expect(find.byType(SettingsScreen), findsOneWidget);
     expect(tester.takeException(), isNull);
