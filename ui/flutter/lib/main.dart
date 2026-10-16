@@ -8621,7 +8621,9 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
                         label: 'Frequency Target',
                         good: frequencyWriteAck != 0,
                         detail: frequencyWriteAck == 1
-                            ? 'Last request verified'
+                            ? 'Last request matched at readback'
+                            : frequencyWriteAck == 2
+                            ? 'Request accepted · effective range differs'
                             : frequencyWriteAck == 0
                             ? 'Last request failed'
                             : 'No request yet',
@@ -9012,15 +9014,15 @@ class _CpuFrequencyCardState extends State<_CpuFrequencyCard> {
         : !custom
         ? 'OEM'
         : widget.targetMinMhz == widget.targetMaxMhz
-        ? 'LOCKED'
+        ? (widget.drift == 0 ? 'LOCK VERIFIED' : 'LOCK REQUESTED')
         : 'RANGE';
     final String verification = !custom
         ? 'OEM managed'
         : widget.drift == 0
         ? 'Target verified'
         : widget.writeAck == 0
-        ? 'Write not verified'
-        : 'Saved target · live limit differs';
+        ? 'Request failed'
+        : 'Requested range saved · driver/OEM limits differ';
 
     return SurfaceCard(
       padding: const EdgeInsets.fromLTRB(14, 13, 14, 14),
@@ -12055,11 +12057,11 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
                         : Icons.balance_rounded));
         final String modeSummary = isBeast
             ? (liveCurFreq > 0
-                  ? 'Live: $liveCurFreq MHz · Fixed at 1.30 GHz'
-                  : 'Applying fixed 1.30 GHz lock')
+                  ? 'Live: $liveCurFreq MHz · Fixed at 1.15 GHz'
+                  : 'Requested 1.15 GHz · effective limit differs')
             : (isGaming
                   ? (liveCurFreq > 0
-                        ? 'Live: $liveCurFreq MHz · Scaling freely to 1.30 GHz'
+                        ? 'Live: $liveCurFreq MHz · Scaling freely to 1.15 GHz'
                         : 'Full-range scaling · 264–1150 MHz')
                   : (isBattery
                         ? (liveCurFreq > 0
@@ -12125,6 +12127,15 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
                   oemManaged:
                       snapshot.performanceProfile < 0 &&
                       _optimisticProfile == null,
+                ),
+                const SizedBox(height: 12),
+
+                Text(
+                  'Requested: ${backend.extendedValue(128)}–${backend.extendedValue(129)} MHz · Effective: $rawMinFreq–$rawMaxFreq MHz',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colors.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 12),
 
@@ -12212,11 +12223,11 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
         ? (isThrottledByOs
               ? 'External clock limit detected · 1150 MHz remains the target'
               : (profileVerified && liveCurFreq == 1150
-                    ? 'Fixed 1.30 GHz target verified from live hardware telemetry'
-                    : 'Fixed 1.30 GHz target requested · waiting for live verification'))
+                    ? 'Fixed 1.15 GHz target verified from live hardware telemetry'
+                    : 'Fixed 1.15 GHz target requested · waiting for live verification'))
         : (isGaming
               ? (liveCurFreq > 0
-                    ? 'Dynamic Gaming Load ($liveCurFreq MHz · 1.30 GHz Ceiling)'
+                    ? 'Dynamic Gaming Load ($liveCurFreq MHz · 1.15 GHz Ceiling)'
                     : 'Standby Dynamic (264 – 1150 MHz · KGSL DVFS Active)')
               : (isBattery
                     ? (liveCurFreq > 0
@@ -12227,7 +12238,7 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
                           : 'Waiting for OEM GPU telemetry')));
 
     final String badgeTitle = isBeast
-        ? '1.30 GHz FIXED TARGET'
+        ? '1.15 GHz FIXED TARGET'
         : (isGaming
               ? 'GAMING DYNAMIC BOOST'
               : (isBattery ? 'BATTERY SAVER CLAMP' : 'DYNAMIC BALANCED'));
@@ -12294,7 +12305,7 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
                     ),
                   ),
                   child: const Text(
-                    '1.30 GHz Target',
+                    '1.15 GHz Target',
                     style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w800,
@@ -12409,7 +12420,9 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
                       ? 'OEM Managed'
                       : isThrottledByOs
                       ? 'Clock Below Target'
-                      : (profileVerified ? 'Verified' : 'Applying'),
+                      : (profileVerified
+                            ? 'Bounds verified'
+                            : 'Requested · limits differ'),
                   accent: oemManaged
                       ? colors.onSurfaceVariant
                       : isThrottledByOs || !profileVerified
@@ -12422,7 +12435,7 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
                 child: _buildTelemetryPill(
                   isDark: isDark,
                   colors: colors,
-                  label: 'ACTIVE RANGE',
+                  label: 'EFFECTIVE RANGE',
                   value: '$minFreq – $maxFreq MHz',
                   accent: mainColor,
                 ),
@@ -12539,7 +12552,7 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
                   1,
                   true,
                   1,
-                  'Extreme Beast · Fixed 1.30 GHz',
+                  'Extreme Beast · Fixed 1.15 GHz',
                   Icons.bolt_rounded,
                   const Color(0xFFFF5252),
                 ),

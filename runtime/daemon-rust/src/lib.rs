@@ -1,3 +1,4 @@
+mod limits;
 mod onyx;
 use std::ffi::c_void;
 use std::fs::{self, OpenOptions};
@@ -22,7 +23,7 @@ mod touch_resampler;
 
 pub const SOCKET_NAME: &str = "rodin_essentiald_v15";
 pub const REVERSE_SOCKET_NAME: &str = "rodin_essential_app_v15";
-pub const PROTOCOL_VERSION: &str = "onyx.1";
+pub const PROTOCOL_VERSION: &str = "onyx.2";
 const LOOPBACK_PORT: u16 = 732;
 
 const AF_UNIX: i32 = 1;
@@ -1533,54 +1534,38 @@ fn apply_cluster_freq_controls_unlocked(
     max_mhz: i32,
 ) -> Result<(), String> {
     validate_cpu_frequency_range(policy, min_mhz, max_mhz)?;
-
-    let min_khz = onyx_cpu_khz(policy, min_mhz)?;
-    let max_khz = onyx_cpu_khz(policy, max_mhz)?;
-    let path_min = format!("/sys/devices/system/cpu/cpufreq/policy{policy}/scaling_min_freq");
-    let path_max = format!("/sys/devices/system/cpu/cpufreq/policy{policy}/scaling_max_freq");
-
-    let write_min = || {
-        service_control::write(&path_min, format!("{min_khz}\n"))
-            .map_err(|error| format!("policy{policy} minimum write: {error}"))
+    let min = onyx_cpu_khz(policy, min_mhz)?;
+    let max = onyx_cpu_khz(policy, max_mhz)?;
+    let base = format!("/sys/devices/system/cpu/cpufreq/policy{policy}");
+    let read = || -> Result<(i64, i64), String> {
+        let get = |node: &str| -> Result<i64, String> {
+            read_trimmed(format!("{base}/{node}"))?
+                .parse::<i64>()
+                .map_err(|e| format!("policy{policy} {node} read: {e}"))
+        };
+        Ok((get("scaling_min_freq")?, get("scaling_max_freq")?))
     };
-    let write_max = || {
-        service_control::write(&path_max, format!("{max_khz}\n"))
-            .map_err(|error| format!("policy{policy} maximum write: {error}"))
-    };
-
-    let write_vendor_constraints = || -> Result<(), String> { Ok(()) };
-
-    let mut actual_min = get_cpu_cluster_live_min_freq(policy);
-    let mut actual_max = get_cpu_cluster_live_max_freq(policy);
-    for attempt in 0..4 {
-        write_vendor_constraints()?;
-
-        // Choose the write order that keeps every intermediate range valid.
-        if min_mhz > actual_max {
-            write_max()?;
-            write_min()?;
-        } else if max_mhz < actual_min {
-            write_min()?;
-            write_max()?;
-        } else {
-            write_max()?;
-            write_min()?;
-        }
-
-        // cpufreq writes are synchronous on Rodin, but a short bounded retry
-        // also handles vendor policy activity occurring in the same instant.
-        std::thread::sleep(Duration::from_millis(if attempt == 0 { 5 } else { 20 }));
-        actual_min = read_cpu_cluster_limit(policy, "scaling_min_freq")?;
-        actual_max = read_cpu_cluster_limit(policy, "scaling_max_freq")?;
-
-        if actual_min == min_mhz && actual_max == max_mhz {
-            return Ok(());
-        }
-    }
-
-    Err(format!(
-        "policy{policy} frequency verify requested {min_mhz}-{max_mhz} MHz, live {actual_min}-{actual_max} MHz"
-    ))
+    let old = read()?;
+    let status = limits::submit(
+        min,
+        max,
+        old,
+        |bound, value| {
+            let node = match bound {
+                limits::Bound::Min => "scaling_min_freq",
+                limits::Bound::Max => "scaling_max_freq",
+            };
+            service_control::write(format!("{base}/{node}"), format!("{value}\n"))
+                .map_err(|e| format!("policy{policy} {node} requested {value} kHz: {e}"))
+        },
+        read,
+    )?;
+    CPU_FREQ_WRITE_ACK.store(if status.exact { 1 } else { 2 }, Ordering::Release);
+    eprintln!(
+        "ONYX_CPU_REQUEST policy={policy} requested_khz={min}-{max} effective_khz={}-{} exact={}",
+        status.min, status.max, status.exact
+    );
+    Ok(())
 }
 
 fn apply_cluster_freq_controls(policy: i32, min_mhz: i32, max_mhz: i32) -> Result<(), String> {
@@ -1656,7 +1641,9 @@ fn set_cpu_cluster_freq_range(policy: i32, min_mhz: i32, max_mhz: i32) -> Result
         Err(error) => Err(error),
     };
 
-    CPU_FREQ_WRITE_ACK.store(if result.is_ok() { 1 } else { 0 }, Ordering::Release);
+    if result.is_err() {
+        CPU_FREQ_WRITE_ACK.store(0, Ordering::Release);
+    }
     result
 }
 
@@ -1724,7 +1711,9 @@ fn reset_cpu_cluster_freq_range(policy: i32) -> Result<(), String> {
         Err(error) => Err(error),
     };
 
-    CPU_FREQ_WRITE_ACK.store(if result.is_ok() { 1 } else { 0 }, Ordering::Release);
+    if result.is_err() {
+        CPU_FREQ_WRITE_ACK.store(0, Ordering::Release);
+    }
     result
 }
 
@@ -1832,7 +1821,10 @@ pub fn apply_performance_profile(profile: i32) -> Result<(), String> {
     PERFORMANCE_STATE.store(profile, Ordering::Release);
     PERFORMANCE_PROFILE_SUPPORTED.store(1, Ordering::Release);
     PERFORMANCE_PROFILE_VERIFIED.store(1, Ordering::Release);
-    PERFORMANCE_PROFILE_OK.store(1, Ordering::Release);
+    PERFORMANCE_PROFILE_OK.store(
+        i32::from(onyx::profile_verified(profile)),
+        Ordering::Release,
+    );
     Ok(())
 }
 
@@ -3965,48 +3957,8 @@ fn reassert_persisted_governors() {
         }
     }
 
-    // Stock mode is owned by MediaTek's power HAL. Tuned profiles use the
-    // persisted desired state as their single source of truth, so the guard
-    // cannot fight a second hard-coded profile writer.
-    if state.perf > 0 {
-        let target_gpu = if !state.gpu_governor.is_empty() {
-            state.gpu_governor.as_str()
-        } else if !state.gpu.is_empty() {
-            state.gpu.as_str()
-        } else {
-            "simple_ondemand"
-        };
-
-        if gpu_get_governor() != target_gpu {
-            let _ = set_gpu_governor(target_gpu);
-        }
-        if state.gpu_min_freq_mhz > 0 && gpu_get_min_freq_mhz() != state.gpu_min_freq_mhz {
-            let _ = set_gpu_min_freq(state.gpu_min_freq_mhz);
-        }
-        if state.gpu_max_freq_mhz > 0 && gpu_get_max_freq_mhz() != state.gpu_max_freq_mhz {
-            let _ = set_gpu_max_freq(state.gpu_max_freq_mhz);
-        }
-        if !state.gpu_power_policy.is_empty() && gpu_get_power_policy() != state.gpu_power_policy {
-            let _ = set_gpu_power_policy(&state.gpu_power_policy);
-        }
-
-        if state.gpu_uncap == 1 {
-            // Do not freeze a lower boot OPP. This step leaves DVFS enabled
-            // until the live frequency reaches 1300 MHz, then locks it.
-            let _ = arm_or_lock_beast_gpu();
-        } else if gpu_get_dvfs_enabled() != 1 {
-            let _ = service_control::write("/sys/module/ged/parameters/gpu_dvfs_enable", "1");
-        }
-    }
-
-    // GED boost is profile-owned. Keep all three MediaTek boost flags enabled
-    // only for Gaming Dynamic and Extreme Beast, including while Stock is
-    // otherwise left under the vendor power HAL.
-    let desired_ged_boost = profile_uses_ged_boost(state.perf);
-    if state.perf >= 0 && !gpu_boost_pipeline_matches(desired_ged_boost) {
-        let _ = set_gpu_ged_boost(desired_ged_boost);
-    }
-
+    // Observe requested versus effective GPU state without rewriting limits.
+    // This prevents an accepted clamped request from becoming a write loop.
     PERFORMANCE_PROFILE_VERIFIED.store(1, Ordering::Release);
     PERFORMANCE_PROFILE_OK.store(
         if gpu_profile_verified(state.perf) {
@@ -4040,62 +3992,8 @@ fn reassert_persisted_governors() {
 }
 
 fn cpu_frequency_guard() {
-    loop {
-        let service_gate = service_control::GATE.read().expect("service gate poisoned");
-        if !service_control::active() {
-            drop(service_gate);
-            service_control::wait_until_active();
-            continue;
-        }
-        let has_saved_range = if let Ok(_guard) = cpu_freq_apply_lock().try_lock() {
-            let state = persisted_state()
-                .lock()
-                .ok()
-                .map(|state| state.clone())
-                .unwrap_or_default();
-
-            let has_saved_range = persisted_cpu_ranges_active(&state);
-            if has_saved_range {
-                if ensure_cpu_unrestricted_mode_unlocked().is_ok() {
-                    for (policy, min_mhz, max_mhz) in [
-                        (0, state.cpu_min_freq0, state.cpu_max_freq0),
-                        (2, state.cpu_min_freq2, state.cpu_max_freq2),
-                        (5, state.cpu_min_freq5, state.cpu_max_freq5),
-                        (7, state.cpu_min_freq7, state.cpu_max_freq7),
-                    ] {
-                        if min_mhz <= 0 || max_mhz <= 0 {
-                            continue;
-                        }
-
-                        if get_cpu_cluster_live_min_freq(policy) != min_mhz
-                            || get_cpu_cluster_live_max_freq(policy) != max_mhz
-                        {
-                            let _ = apply_cluster_freq_controls_unlocked(policy, min_mhz, max_mhz);
-                        }
-                    }
-                } else {
-                    CPU_FREQ_WRITE_ACK.store(0, Ordering::Release);
-                }
-            } else if state.cpu_thermal_mode_prev >= 0
-                && restore_cpu_thermal_mode_unlocked().is_err()
-            {
-                CPU_THERMAL_MODE_ACK.store(0, Ordering::Release);
-            }
-
-            has_saved_range
-        } else {
-            // A foreground apply is already in progress. Check again quickly
-            // after that transaction releases the shared CPU control lock.
-            true
-        };
-
-        drop(service_gate);
-        std::thread::sleep(Duration::from_millis(if has_saved_range {
-            100
-        } else {
-            500
-        }));
-    }
+    // Frequency requests are submitted on user action and bounded boot restore.
+    // No periodic writes: a lower effective limit may belong to the driver/OEM.
 }
 
 fn gaming_dynamic_guard() {
@@ -4775,7 +4673,9 @@ fn gpu_boost_pipeline_matches(enabled: bool) -> bool {
 }
 
 fn gpu_get_thermal_state() -> i32 {
-    -1
+    onyx::root_read("thermal_pwrlevel")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(-1)
 }
 
 fn gpu_get_dvfs_enabled() -> i32 {
@@ -4971,6 +4871,8 @@ fn snapshot_persistence_fields() -> Vec<String> {
         format!("zram_alg={zram_alg}"),
         format!("gpu_load={}", gpu_get_loading()),
         format!("gpu_cur_freq={}", gpu_get_cur_freq_mhz()),
+        format!("gpu_requested_min={}", state.gpu_min_freq_mhz),
+        format!("gpu_requested_max={}", state.gpu_max_freq_mhz),
         format!("gpu_min_freq={}", gpu_get_min_freq_mhz()),
         format!("gpu_max_freq={}", gpu_get_max_freq_mhz()),
         format!("gpu_gov={}", gpu_get_governor()),
@@ -5866,8 +5768,33 @@ fn handle_enabled_command(line: &str) -> String {
 
     match result {
         Ok(()) => match record_successful_command(cmd) {
+            Ok(())
+                if cmd.starts_with("SET cpu.min_freq ")
+                    || cmd.starts_with("SET cpu.max_freq ")
+                    || cmd.starts_with("SET cpu.freq_range ")
+                    || cmd.starts_with("SET cpu.freq_reset ") =>
+            {
+                format!(
+                    "OK requested;cpu_freq_ack={}",
+                    CPU_FREQ_WRITE_ACK.load(Ordering::Acquire)
+                )
+            }
+            Ok(())
+                if cmd.starts_with("SET perf ")
+                    || cmd.starts_with("SET gpu.")
+                    || cmd == "ACTION gpu.uncap_full_speed" =>
+            {
+                format!(
+                    "OK requested;gpu_exact={};effective_mhz={}-{}",
+                    i32::from(gpu_profile_verified(
+                        PERFORMANCE_STATE.load(Ordering::Acquire)
+                    )),
+                    gpu_get_min_freq_mhz(),
+                    gpu_get_max_freq_mhz()
+                )
+            }
             Ok(()) => "OK applied".into(),
-            Err(error) => format!("ERR applied but persistence failed: {error}"),
+            Err(error) => format!("ERR request persistence failed: {error}"),
         },
         Err(e) => format!("ERR {e}"),
     }

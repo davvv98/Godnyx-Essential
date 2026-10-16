@@ -11,7 +11,10 @@ pub(super) fn write(node: &str, value: &str) -> Result<(), String> {
     let path = format!("{GPU}/devfreq/{node}");
     service_control::write(&path, value).map_err(|e| e.to_string())?;
     if read(node).as_deref() != Some(value) {
-        return Err(format!("KGSL {node} readback mismatch"));
+        return Err(format!(
+            "KGSL {node} verify requested={value} actual={:?}",
+            read(node)
+        ));
     }
     Ok(())
 }
@@ -86,21 +89,39 @@ pub(super) fn set_range(min: i32, max: i32) -> Result<(), String> {
     remember_defaults()?;
     let old_min = mhz("min_freq").ok_or("KGSL minimum unavailable")?;
     let old_max = mhz("max_freq").ok_or("KGSL maximum unavailable")?;
-    let put = |node, value: i32| write(node, &(i64::from(value) * 1_000_000).to_string());
-    let result = if min > old_max {
-        put("max_freq", max).and_then(|_| put("min_freq", min))
-    } else {
-        put("min_freq", min).and_then(|_| put("max_freq", max))
+    let raw_read = || -> Result<(i64, i64), String> {
+        let get = |node: &str| -> Result<i64, String> {
+            read(node)
+                .ok_or_else(|| format!("KGSL {node} unavailable"))?
+                .parse()
+                .map_err(|e| format!("KGSL {node} invalid: {e}"))
+        };
+        Ok((get("min_freq")?, get("max_freq")?))
     };
-    if let Err(error) = result {
-        // Relax the minimum before rolling back so both transition directions work.
-        let _ = put("min_freq", *opps.first().unwrap());
-        let _ = put("max_freq", old_max);
-        let _ = put("min_freq", old_min);
-        return Err(error);
-    }
+    let status = super::limits::submit(
+        i64::from(min) * 1_000_000,
+        i64::from(max) * 1_000_000,
+        (
+            i64::from(old_min) * 1_000_000,
+            i64::from(old_max) * 1_000_000,
+        ),
+        |bound, value| {
+            let node = match bound {
+                super::limits::Bound::Min => "min_freq",
+                super::limits::Bound::Max => "max_freq",
+            };
+            service_control::write(format!("{GPU}/devfreq/{node}"), value.to_string())
+                .map_err(|e| format!("KGSL {node} requested {value} Hz: {e}"))
+        },
+        raw_read,
+    )?;
+    eprintln!(
+        "ONYX_GPU_REQUEST requested_mhz={min}-{max} effective_hz={}-{} exact={}",
+        status.min, status.max, status.exact
+    );
     Ok(())
 }
+
 pub(super) fn apply_profile(profile: i32) -> Result<(), String> {
     let (min, max) = profile_range(profile)?;
     if !read("available_governors")

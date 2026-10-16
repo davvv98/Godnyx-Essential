@@ -91,3 +91,44 @@ se atribuye el fallo a permisos, SELinux o HAL sin ver el error real.
 sin modificar controles del dispositivo. Primero intentar GPU, CPU y color en
 la app, después ejecutar el diagnóstico como root. Carga y touch permanecen
 pendientes; este parche no los convierte en funciones implementadas.
+
+## Corrección GPU + CPU: protocolo onyx.2
+
+La escritura y su lectura efectiva se tratan por separado. Después de una
+escritura aceptada y una lectura válida, una diferencia no revierte el perfil
+ni elimina la solicitud guardada. Se conserva el valor solicitado y se muestra
+el efectivo con estado de límites diferentes (driver/OEM). No se identifica
+el propietario de la restricción solamente a partir de esa diferencia.
+
+Errores de permisos, IO, lecturas inválidas, OPP inexistentes y persistencia
+siguen siendo errores. Si una transacción falla, se intenta restaurar el rango
+anterior; cualquier fallo en esa restauración también se informa.
+
+CPU conserva los cuatro clústeres y la conversión a kHz exactos. cpu_freq_ack:
+- 1: la lectura inicial coincide con la solicitud;
+- 2: escritura aceptada con lectura efectiva distinta;
+- 0: solicitud fallida;
+- -1: sin resultado.
+Los campos cpu_freq_drift indican si el estado efectivo posterior difiere.
+
+GPU añade gpu_requested_min/gpu_requested_max y mantiene gpu_min_freq /
+gpu_max_freq como lecturas efectivas. perf_verify_ok=1 solo indica coincidencia
+al verificar; seleccionar un perfil no garantiza una frecuencia instantánea.
+La app muestra ambas magnitudes. El índice thermal_pwrlevel se lee como
+telemetría; no se modifica.
+
+Se retiraron las escrituras periódicas de límites por divergencia. Se aplican
+al pulsar Apply/seleccionar perfil, al cambiar controles por aplicación y en la
+restauración de arranque acotada existente. No se promete recuperar por sí sola
+la frecuencia cuando otro propietario restaura sus límites. Puede reenviarse
+la solicitud desde la app. Los governors y otros controles conservan sus
+rutas existentes.
+
+Hay que instalar juntos APK y daemon nuevos: host y daemon usan onyx.2.
+Las solicitudes guardadas anteriores se conservan. Esta corrección no agrega
+funciones de carga/touch ni cambia DisplayFeature.
+
+Validación: 101 pruebas unitarias + 2 integraciones del daemon; comprobación
+Rust Android ARM64 para host y daemon; sintaxis Dart con el SDK fijado al motor
+usado por Flutter 3.47.7; contratos del módulo, versión y watchdog. No se ha
+compilado ni probado un APK nuevo en el teléfono en esta sesión.

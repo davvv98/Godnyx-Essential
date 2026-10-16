@@ -1,6 +1,7 @@
-Android ARM64 cargo check: daemon + host PASS (27 advertencias de código legado sin uso).
-Daemon cargo test: 96 unitarias + 2 integraciones PASS.
-Dart format: 3 archivos analizados sintácticamente PASS.
+GPU+CPU / onyx.2
+Android ARM64 cargo check: host + daemon PASS (31 advertencias de código legado sin uso).
+Daemon: 101 pruebas unitarias + 2 integraciones PASS.
+Dart format main.dart: PASS.
 Contratos módulo, versión y watchdog: PASS.
-Flutter analyze: BLOQUEADO por revisión automática; no se reintentó.
-APK/NDK enlace final/dispositivo: NO PROBADOS.
+Casos nuevos: CPU 3014400->2323200 kHz; GPU 1150000000->763000000 Hz; escritura denegada; lectura inválida y rollback.
+Flutter analyze, APK y dispositivo: no ejecutados para esta revisión.

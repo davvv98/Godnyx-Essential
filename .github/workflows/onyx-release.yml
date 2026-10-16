@@ -45,7 +45,7 @@ jobs:
           test -f runtime/daemon-rust/src/onyx.rs
           test -f ui/flutter/pubspec.yaml
           test -f tools/build-kernelsu-next-module.sh
-          grep -Fq 'onyx.1' runtime/daemon-rust/src/lib.rs
+          grep -Fq 'onyx.2' runtime/daemon-rust/src/lib.rs
 
       - name: Free disk space for engine sources
         run: |

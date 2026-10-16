@@ -16,7 +16,7 @@ const SOCKET_NAME: &str = "rodin_essentiald_v15";
 const REVERSE_SOCKET_NAME: &str = "rodin_essential_app_v15";
 const LOOPBACK_PORT: u16 = 732;
 const LOOPBACK_PRIVILEGE_PROBE_PORT: u16 = 731;
-const EXTENDED_VALUE_COUNT: usize = 128;
+const EXTENDED_VALUE_COUNT: usize = 130;
 
 #[repr(C)]
 struct SockAddrUn {
@@ -660,7 +660,7 @@ fn refresh(cache: &Cache) -> Result<(), String> {
             map.insert(k.to_string(), v.to_string());
         }
     }
-    if map.get("protocol").map(String::as_str) != Some("onyx.1") {
+    if map.get("protocol").map(String::as_str) != Some("onyx.2") {
         return Err("protocol mismatch".into());
     }
 
@@ -801,6 +801,8 @@ fn refresh(cache: &Cache) -> Result<(), String> {
         ("zram_swappiness", 43),
         ("gpu_load", 45),
         ("gpu_cur_freq", 46),
+        ("gpu_requested_min", 128),
+        ("gpu_requested_max", 129),
         ("gpu_min_freq", 47),
         ("gpu_max_freq", 48),
         ("gpu_ged_boost", 50),
@@ -1079,49 +1081,16 @@ fn perform(command: Command) -> Result<(), String> {
                     return request(&cmd_str).map(|_| ());
                 }
                 19 => {
-                    if let Some(r) = runtime() {
-                        match a {
-                            0 => r.cache.extended[53].store(b, Ordering::Release),
-                            4 => r.cache.extended[55].store(b, Ordering::Release),
-                            7 => r.cache.extended[57].store(b, Ordering::Release),
-                            _ => {}
-                        }
-                    }
                     let cmd_str = format!("SET cpu.min_freq {a} {b}");
                     return request(&cmd_str).map(|_| ());
                 }
                 20 => {
-                    if let Some(r) = runtime() {
-                        match a {
-                            0 => r.cache.extended[54].store(b, Ordering::Release),
-                            4 => r.cache.extended[56].store(b, Ordering::Release),
-                            7 => r.cache.extended[58].store(b, Ordering::Release),
-                            _ => {}
-                        }
-                    }
                     let cmd_str = format!("SET cpu.max_freq {a} {b}");
                     return request(&cmd_str).map(|_| ());
                 }
                 21 => {
                     let min = (b >> 16) & 0xFFFF;
                     let max = b & 0xFFFF;
-                    if let Some(r) = runtime() {
-                        match a {
-                            0 => {
-                                r.cache.extended[53].store(min, Ordering::Release);
-                                r.cache.extended[54].store(max, Ordering::Release);
-                            }
-                            4 => {
-                                r.cache.extended[55].store(min, Ordering::Release);
-                                r.cache.extended[56].store(max, Ordering::Release);
-                            }
-                            7 => {
-                                r.cache.extended[57].store(min, Ordering::Release);
-                                r.cache.extended[58].store(max, Ordering::Release);
-                            }
-                            _ => {}
-                        }
-                    }
                     let cmd_str = format!("SET cpu.freq_range {a} {min} {max}");
                     return request(&cmd_str).map(|_| ());
                 }
@@ -1134,23 +1103,6 @@ fn perform(command: Command) -> Result<(), String> {
                     return request(&cmd_str).map(|_| ());
                 }
                 23 if matches!(a, 0 | 2 | 5 | 7) => {
-                    if let Some(r) = runtime() {
-                        match a {
-                            0 => {
-                                r.cache.extended[53].store(-1, Ordering::Release);
-                                r.cache.extended[54].store(-1, Ordering::Release);
-                            }
-                            4 => {
-                                r.cache.extended[55].store(-1, Ordering::Release);
-                                r.cache.extended[56].store(-1, Ordering::Release);
-                            }
-                            7 => {
-                                r.cache.extended[57].store(-1, Ordering::Release);
-                                r.cache.extended[58].store(-1, Ordering::Release);
-                            }
-                            _ => {}
-                        }
-                    }
                     let cmd_str = format!("SET cpu.freq_reset {a}");
                     return request(&cmd_str).map(|_| ());
                 }
@@ -1381,7 +1333,7 @@ fn worker(cache: Arc<Cache>, rx: mpsc::Receiver<Command>) {
                     match refresh(&cache) {
                         Ok(()) => {
                             if !logged_pass {
-                                app_log(b"RODIN_BACKEND_APP=PASS protocol=onyx.1\0");
+                                app_log(b"RODIN_BACKEND_APP=PASS protocol=onyx.2\0");
                                 logged_pass = true;
                             }
                             logged_fail = false;
@@ -1471,7 +1423,7 @@ fn worker(cache: Arc<Cache>, rx: mpsc::Receiver<Command>) {
             match refresh(&cache) {
                 Ok(()) => {
                     if !logged_pass {
-                        app_log(b"RODIN_BACKEND_APP=PASS protocol=onyx.1\0");
+                        app_log(b"RODIN_BACKEND_APP=PASS protocol=onyx.2\0");
                         logged_pass = true;
                     }
                     logged_fail = false;
