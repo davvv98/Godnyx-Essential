@@ -8234,6 +8234,95 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
                 ),
                 const SizedBox(height: 12),
 
+                SurfaceCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Xiaomi Sconfig',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: colors.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        backend.extendedValue(130) == 1
+                            ? 'Current: ${backend.extendedValue(131)} · Saved: ${backend.extendedValue(132) < 0 ? "OEM" : backend.extendedValue(132)} · Original: ${backend.extendedValue(133) == -2 ? "Not captured" : backend.extendedValue(133)}'
+                            : 'Sconfig unavailable on this vendor',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButton<int>(
+                        isExpanded: true,
+                        value:
+                            const <int>[
+                              -1,
+                              0,
+                              6,
+                              18,
+                              50,
+                              56,
+                              68,
+                            ].contains(backend.extendedValue(132))
+                            ? backend.extendedValue(132)
+                            : -1,
+                        items: const <DropdownMenuItem<int>>[
+                          DropdownMenuItem(
+                            value: -1,
+                            child: Text('OEM · restore captured original'),
+                          ),
+                          DropdownMenuItem(value: 0, child: Text('0 · Normal')),
+                          DropdownMenuItem(
+                            value: 6,
+                            child: Text('6 · NoLimits'),
+                          ),
+                          DropdownMenuItem(value: 18, child: Text('18 · Game')),
+                          DropdownMenuItem(
+                            value: 50,
+                            child: Text('50 · Performance Normal'),
+                          ),
+                          DropdownMenuItem(
+                            value: 56,
+                            child: Text('56 · Performance NoLimits'),
+                          ),
+                          DropdownMenuItem(
+                            value: 68,
+                            child: Text('68 · Performance Game'),
+                          ),
+                        ],
+                        onChanged: canWrite && backend.extendedValue(130) == 1
+                            ? (int? value) {
+                                if (value == null) return;
+                                backend.setExtendedOperation(32, value);
+                                _showGlassToast(
+                                  'SCONFIG REQUESTED',
+                                  value < 0
+                                      ? 'Restore captured OEM value'
+                                      : 'Xiaomi scenario $value',
+                                  Icons.tune_rounded,
+                                  const Color(0xFFFF9F68),
+                                );
+                              }
+                            : null,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Changes the Xiaomi thermal policy for CPU and GPU. NoLimits can increase heat and battery use. Scenario names come from stock XML; behavior depends on the vendor.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
                 Text(
                   'CPU FREQUENCY CONTROL',
                   style: TextStyle(

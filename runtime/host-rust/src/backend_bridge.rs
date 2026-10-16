@@ -16,7 +16,7 @@ const SOCKET_NAME: &str = "rodin_essentiald_v15";
 const REVERSE_SOCKET_NAME: &str = "rodin_essential_app_v15";
 const LOOPBACK_PORT: u16 = 732;
 const LOOPBACK_PRIVILEGE_PROBE_PORT: u16 = 731;
-const EXTENDED_VALUE_COUNT: usize = 130;
+const EXTENDED_VALUE_COUNT: usize = 134;
 
 #[repr(C)]
 struct SockAddrUn {
@@ -660,7 +660,7 @@ fn refresh(cache: &Cache) -> Result<(), String> {
             map.insert(k.to_string(), v.to_string());
         }
     }
-    if map.get("protocol").map(String::as_str) != Some("onyx.2") {
+    if map.get("protocol").map(String::as_str) != Some("onyx.3") {
         return Err("protocol mismatch".into());
     }
 
@@ -801,6 +801,10 @@ fn refresh(cache: &Cache) -> Result<(), String> {
         ("zram_swappiness", 43),
         ("gpu_load", 45),
         ("gpu_cur_freq", 46),
+        ("sconfig_supported", 130),
+        ("sconfig_live", 131),
+        ("sconfig_saved", 132),
+        ("sconfig_original", 133),
         ("gpu_requested_min", 128),
         ("gpu_requested_max", 129),
         ("gpu_min_freq", 47),
@@ -1106,6 +1110,7 @@ fn perform(command: Command) -> Result<(), String> {
                     let cmd_str = format!("SET cpu.freq_reset {a}");
                     return request(&cmd_str).map(|_| ());
                 }
+                32 if matches!(a, -1 | 0 | 6 | 18 | 50 | 56 | 68) => format!("SET cpu.sconfig {a}"),
                 29 if matches!(a, 0 | 1) => format!("SET service.enabled {a}"),
                 30 => "ACTION service.reset".to_string(),
                 31 if matches!(a, 0 | 20 | 40 | 80 | 90) => {
@@ -1333,7 +1338,7 @@ fn worker(cache: Arc<Cache>, rx: mpsc::Receiver<Command>) {
                     match refresh(&cache) {
                         Ok(()) => {
                             if !logged_pass {
-                                app_log(b"RODIN_BACKEND_APP=PASS protocol=onyx.2\0");
+                                app_log(b"RODIN_BACKEND_APP=PASS protocol=onyx.3\0");
                                 logged_pass = true;
                             }
                             logged_fail = false;
@@ -1423,7 +1428,7 @@ fn worker(cache: Arc<Cache>, rx: mpsc::Receiver<Command>) {
             match refresh(&cache) {
                 Ok(()) => {
                     if !logged_pass {
-                        app_log(b"RODIN_BACKEND_APP=PASS protocol=onyx.2\0");
+                        app_log(b"RODIN_BACKEND_APP=PASS protocol=onyx.3\0");
                         logged_pass = true;
                     }
                     logged_fail = false;

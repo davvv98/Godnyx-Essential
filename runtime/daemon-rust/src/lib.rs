@@ -1,5 +1,6 @@
 mod limits;
 mod onyx;
+mod sconfig;
 use std::ffi::c_void;
 use std::fs::{self, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -23,7 +24,7 @@ mod touch_resampler;
 
 pub const SOCKET_NAME: &str = "rodin_essentiald_v15";
 pub const REVERSE_SOCKET_NAME: &str = "rodin_essential_app_v15";
-pub const PROTOCOL_VERSION: &str = "onyx.2";
+pub const PROTOCOL_VERSION: &str = "onyx.3";
 const LOOPBACK_PORT: u16 = 732;
 
 const AF_UNIX: i32 = 1;
@@ -2392,6 +2393,7 @@ struct PersistedState {
     cpu_min_freq7: i32,
     cpu_max_freq7: i32,
     cpu_thermal_mode_prev: i32,
+    sconfig_override: i32,
 }
 
 impl Default for PersistedState {
@@ -2441,6 +2443,7 @@ impl Default for PersistedState {
             cpu_min_freq7: -1,
             cpu_max_freq7: -1,
             cpu_thermal_mode_prev: -1,
+            sconfig_override: -1,
         }
     }
 }
@@ -2780,6 +2783,11 @@ fn parse_persisted_state(raw: &str) -> PersistedState {
                     state.cpu_max_freq7 = v;
                 }
             }
+            "sconfig_override" => {
+                if let Some(v) = int_value().filter(|v| *v == -1 || sconfig::supported_mode(*v)) {
+                    state.sconfig_override = v;
+                }
+            }
             "cpu_thermal_mode_prev" => {
                 if let Some(v) = int_value() {
                     state.cpu_thermal_mode_prev = if valid_mi_thermal_config_mode(v) {
@@ -2889,6 +2897,7 @@ fn save_persisted_state(state: &PersistedState) -> Result<(), String> {
     out.push_str(&format!("cpu_max_freq5={}\n", state.cpu_max_freq5));
     out.push_str(&format!("cpu_min_freq7={}\n", state.cpu_min_freq7));
     out.push_str(&format!("cpu_max_freq7={}\n", state.cpu_max_freq7));
+    out.push_str(&format!("sconfig_override={}\n", state.sconfig_override));
     out.push_str(&format!(
         "cpu_thermal_mode_prev={}\n",
         state.cpu_thermal_mode_prev
@@ -3676,6 +3685,12 @@ fn restore_persisted_state() {
         .ok()
         .map(|s| s.clone())
         .unwrap_or_default();
+
+    if state.sconfig_override >= 0 {
+        if let Err(error) = sconfig::set(state.sconfig_override) {
+            eprintln!("ONYX_SCONFIG_RESTORE_FAIL {error}");
+        }
+    }
 
     let legacy_state = state.gpu_profile_cpu_isolated != 1;
     let reset_legacy_cpu = migrate_legacy_gpu_profile_cpu_state(&mut state);
@@ -4912,6 +4927,10 @@ fn snapshot_persistence_fields() -> Vec<String> {
         format!("cpu_freq_drift2={cpu_freq_drift2}"),
         format!("cpu_freq_drift5={cpu_freq_drift5}"),
         format!("cpu_freq_drift7={cpu_freq_drift7}"),
+        format!("sconfig_supported={}", i32::from(sconfig::supported())),
+        format!("sconfig_live={}", sconfig::read().unwrap_or(-2)),
+        format!("sconfig_saved={}", state.sconfig_override),
+        format!("sconfig_original={}", sconfig::original().unwrap_or(-2)),
         format!("cpu_thermal_mode={cpu_thermal_mode}"),
         format!("cpu_thermal_mode_prev={}", state.cpu_thermal_mode_prev),
         format!("cpu_thermal_unrestricted={cpu_thermal_unrestricted}"),
@@ -5183,6 +5202,7 @@ fn restore_released_controls() -> Result<(), String> {
             errors.push(format!("{name}: {error}"));
         }
     };
+    run("Xiaomi Sconfig", sconfig::release());
     // Never leave an adapter charge-pause request behind when control is disabled.
     if bypass_charging_path().is_some()
         && (saved.bypass_charging == 1 || bypass_charging_state() == 1)
@@ -5540,7 +5560,11 @@ fn handle_enabled_command(line: &str) -> String {
         };
     }
 
-    let result: Result<(), String> = if let Some(arg) = cmd.strip_prefix("SET charging ") {
+    let result: Result<(), String> = if let Some(arg) = cmd.strip_prefix("SET cpu.sconfig ") {
+        arg.parse::<i32>()
+            .map_err(|_| "invalid Sconfig selection".to_string())
+            .and_then(sconfig::set)
+    } else if let Some(arg) = cmd.strip_prefix("SET charging ") {
         let value = match arg.trim() {
             "standard" | "adaptive" => 0,
             "boost" => 90,

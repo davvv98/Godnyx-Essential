@@ -8,6 +8,12 @@ RODIN_PACKAGE=io.github.neeschal.rodinessential
 RODIN_NATIVE_MODE=0
 [ -f "$MODDIR/rom-native-mode" ] && RODIN_NATIVE_MODE=1
 
+# Release an explicit Sconfig override while the daemon is still running.
+if [ -x "$MODDIR/bin/rodin_ctl" ] && command -v timeout >/dev/null 2>&1; then
+    timeout 8 "$MODDIR/bin/rodin_ctl" SET cpu.sconfig -1 \
+        >"$RODIN_ROOT/sconfig-uninstall.log" 2>&1 || true
+fi
+
 case "$RODIN_WATCHDOG_PID" in
     ''|*[!0-9]*) ;;
     *) kill "$RODIN_WATCHDOG_PID" 2>/dev/null ;;

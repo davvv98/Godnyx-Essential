@@ -132,3 +132,46 @@ Validación: 101 pruebas unitarias + 2 integraciones del daemon; comprobación
 Rust Android ARM64 para host y daemon; sintaxis Dart con el SDK fijado al motor
 usado por Flutter 3.47.7; contratos del módulo, versión y watchdog. No se ha
 compilado ni probado un APK nuevo en el teléfono en esta sesión.
+
+## Selector Xiaomi Sconfig — onyx.3
+
+CPU incluye un selector independiente de las frecuencias y perfiles GPU:
+OEM/restaurar original, 0 Normal, 6 NoLimits, 18 Game, 50 Performance Normal,
+56 Performance NoLimits y 68 Performance Game. Los nombres proceden del XML
+stock aportado por el usuario; solo el modo 6 tiene la prueba física de GPU
+1150 MHz en esta conversación. No se supone equivalencia entre 6 y 56.
+
+El selector muestra lectura actual, selección guardada y original capturado.
+Usa /sys/class/thermal/thermal_message/sconfig, con alternativa en
+/sys/devices/virtual/thermal/thermal_message/sconfig. No modifica el XML ODM.
+
+NoLimits cambia la política térmica de Xiaomi para CPU/GPU y puede aumentar
+calor y consumo. El selector comienza en OEM y no se activa automáticamente
+al cambiar una frecuencia ni seleccionar Extremo. Los números de defined
+no se escriben en sysfs; son entradas del archivo de escenarios.
+
+El daemon guarda el valor previo al primer cambio, verifica la escritura y
+conserva la elección para reanudarla al activar el servicio o arrancar.
+OEM restaura el valor capturado y elimina la elección. Desactivar el control
+restaura el original conservando la elección para reactivar. Reset restaura
+y borra la elección. El desinstalador intenta restaurarlo con un RPC acotado
+antes de detener el daemon; no se garantiza restauración si el daemon o el
+nodo no están disponibles. No hay bucles de reescritura de Sconfig.
+
+Si ya habías escrito 6 manualmente antes del primer uso, el original capturado
+será 6. Para pedir Normal elige 0; no se inventa un original 0. El valor de
+lectura automática -1 también se conserva literalmente al restaurar.
+
+Después de cambiar Sconfig, comprueba la lectura actual y vuelve a aplicar
+las frecuencias/perfil deseados si Xiaomi los ha cambiado al cargar el escenario.
+
+Diagnóstico RPC: SET cpu.sconfig 6; SET cpu.sconfig -1 (restaurar).
+Snapshot: sconfig_supported, sconfig_live, sconfig_saved, sconfig_original.
+-1 en saved significa OEM; -2 en original significa que no hay captura.
+APK y daemon deben actualizarse juntos: protocolo onyx.3.
+
+Validación: 103 pruebas unitarias y 3 integraciones del daemon, incluidas
+selección/cambio de modos, restauración OEM, disable/enable, reinicio de
+proceso, error de nodo ausente, original -1 y reset; cargo check Android ARM64
+host+daemon; sintaxis Dart; contratos del módulo/versión/watchdog. No se ha
+compilado ni ejecutado un APK nuevo en el dispositivo en esta sesión.
