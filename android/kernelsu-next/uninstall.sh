@@ -1,7 +1,7 @@
 #!/system/bin/sh
 
 MODDIR=${0%/*}
-RODIN_ROOT=/data/adb/rodin-essential
+RODIN_ROOT=/data/adb/onyx-essential
 RODIN_WATCHDOG_LOCK="$RODIN_ROOT/watchdog.lock"
 RODIN_WATCHDOG_PID="$(cat "$RODIN_ROOT/watchdog.pid" 2>/dev/null)"
 RODIN_PACKAGE=io.github.neeschal.rodinessential

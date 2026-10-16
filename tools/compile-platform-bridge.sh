@@ -3,7 +3,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${1:?output directory required}"
 SDK="${ANDROID_SDK_ROOT:?Android SDK required}"
-TOOLS="$(find "$SDK/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+if [ -n "${RODIN_BUILD_TOOLS_VERSION:-}" ]; then
+    TOOLS="$SDK/build-tools/$RODIN_BUILD_TOOLS_VERSION"
+else
+    TOOLS="$(find "$SDK/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+fi
 mkdir -p "$OUT/platform-classes" "$OUT/platform-dex"
 mapfile -d '' SOURCES < <(find "$ROOT/android/platform" -name '*.java' -print0)
 javac --release 8 -classpath "$SDK/platforms/android-36/android.jar" -d "$OUT/platform-classes" "${SOURCES[@]}"

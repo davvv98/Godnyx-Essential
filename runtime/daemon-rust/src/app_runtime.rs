@@ -81,7 +81,7 @@ fn control(key: &str) -> Option<Control> {
         "gpu" => Some(Control::Gpu),
         "refresh" => Some(Control::Refresh),
         "cores" => Some(Control::CpuCores),
-        _ => [0, 4, 7].into_iter().find_map(|p| {
+        _ => [0, 2, 5, 7].into_iter().find_map(|p| {
             if key == format!("range{p}") {
                 Some(Control::CpuRange(p))
             } else if key == format!("governor{p}") {
@@ -103,16 +103,21 @@ fn copy_preference(c: &Control, from: &PersistedState, to: &mut PersistedState) 
             to.cpu_min_freq0 = from.cpu_min_freq0;
             to.cpu_max_freq0 = from.cpu_max_freq0;
         }
-        Control::CpuRange(4) => {
-            to.cpu_min_freq4 = from.cpu_min_freq4;
-            to.cpu_max_freq4 = from.cpu_max_freq4;
+        Control::CpuRange(2) => {
+            to.cpu_min_freq2 = from.cpu_min_freq2;
+            to.cpu_max_freq2 = from.cpu_max_freq2;
+        }
+        Control::CpuRange(5) => {
+            to.cpu_min_freq5 = from.cpu_min_freq5;
+            to.cpu_max_freq5 = from.cpu_max_freq5;
         }
         Control::CpuRange(7) => {
             to.cpu_min_freq7 = from.cpu_min_freq7;
             to.cpu_max_freq7 = from.cpu_max_freq7;
         }
         Control::CpuGovernor(0) => to.cpu0 = from.cpu0.clone(),
-        Control::CpuGovernor(4) => to.cpu4 = from.cpu4.clone(),
+        Control::CpuGovernor(2) => to.cpu2 = from.cpu2.clone(),
+        Control::CpuGovernor(5) => to.cpu5 = from.cpu5.clone(),
         Control::CpuGovernor(7) => to.cpu7 = from.cpu7.clone(),
         Control::Gpu => {
             to.perf = from.perf;
@@ -266,7 +271,8 @@ impl Hardware for Adapter {
                 set_cpu_governor(*p as i32, v)?;
                 mutate_persisted_state(|s| match p {
                     0 => s.cpu0 = v.clone(),
-                    4 => s.cpu4 = v.clone(),
+                    2 => s.cpu2 = v.clone(),
+                    5 => s.cpu5 = v.clone(),
                     7 => s.cpu7 = v.clone(),
                     _ => {}
                 })
@@ -289,7 +295,7 @@ impl Hardware for Adapter {
                 let min = saved.state.gpu_min_freq_mhz;
                 let max = saved.state.gpu_max_freq_mhz;
                 if min > 0 && max >= min {
-                    set_gpu_min_freq(260)?;
+                    set_gpu_min_freq(264)?;
                     set_gpu_max_freq(max)?;
                     set_gpu_min_freq(min)?;
                 }
@@ -300,9 +306,6 @@ impl Hardware for Adapter {
                 };
                 if !governor.is_empty() {
                     set_gpu_governor(governor)?;
-                }
-                if !saved.state.gpu_power_policy.is_empty() {
-                    set_gpu_power_policy(&saved.state.gpu_power_policy)?;
                 }
                 if saved.state.gpu_uncap == 1 {
                     set_gpu_uncap(true)?;
@@ -561,7 +564,10 @@ fn refresh_setting(
     value: Option<&str>,
 ) -> Result<String, String> {
     if !matches!(table, "system" | "secure")
-        || !matches!(key, "user_refresh_rate" | "miui_refresh_rate" | "is_smart_fps")
+        || !matches!(
+            key,
+            "user_refresh_rate" | "miui_refresh_rate" | "is_smart_fps"
+        )
     {
         return Err("invalid ROM refresh setting".into());
     }
@@ -586,7 +592,10 @@ fn capture_vendor_refresh(user: u32) -> Result<Value, String> {
             }
         }
     }
-    if entries.iter().any(|entry| entry["key"] == "miui_refresh_rate") {
+    if entries
+        .iter()
+        .any(|entry| entry["key"] == "miui_refresh_rate")
+    {
         let value = refresh_setting(user, "system", "get", "is_smart_fps", None)?;
         if matches!(value.as_str(), "0" | "1") {
             entries.push(json!({"table":"system","key":"is_smart_fps","value":value}));
@@ -597,7 +606,7 @@ fn capture_vendor_refresh(user: u32) -> Result<Value, String> {
 fn capabilities() -> Result<Capabilities, String> {
     let mut caps = Capabilities::default();
     if touch_panel_code() != 0 || vendor_binder::touch_available() {
-        caps.touch = BTreeSet::from([0, 1, 2, 3]);
+        caps.touch = BTreeSet::new();
     }
     if gpu_get_min_freq_mhz() > 0 && gpu_get_max_freq_mhz() > 0 {
         caps.gpu = BTreeSet::from([0, 1, 2, 3]);
@@ -611,7 +620,7 @@ fn capabilities() -> Result<Capabilities, String> {
             caps.refresh.insert(0);
         }
     }
-    for p in [0, 4, 7] {
+    for p in [0, 2, 5, 7] {
         let table = cpu_available_frequencies(p as i32)
             .into_iter()
             .map(|v| v as u32)
@@ -627,7 +636,8 @@ fn capabilities() -> Result<Capabilities, String> {
                 .split_whitespace()
                 .filter(|g| {
                     [
-                        "sugov_ext",
+                        "walt",
+                        "migov",
                         "conservative",
                         "powersave",
                         "performance",
@@ -645,7 +655,7 @@ fn capabilities() -> Result<Capabilities, String> {
 fn capabilities_json() -> Result<Value, String> {
     let caps = capabilities()?;
     let mut cpu = json!({});
-    for p in [0, 4, 7] {
+    for p in [0, 2, 5, 7] {
         cpu[p.to_string()] = json!({"frequencies":caps.cpu_frequencies.get(&p),"governors":caps.cpu_governors.get(&p)});
     }
     Ok(
@@ -657,10 +667,10 @@ fn foreground() -> Result<Option<App>, String> {
     parse_foreground(&raw)
 }
 fn parse_foreground(raw: &str) -> Result<Option<App>, String> {
-    if raw
-        .lines()
-        .any(|line| line.split_whitespace().any(|token| matches!(token, "mSleeping=true" | "mShuttingDown=true")))
-    {
+    if raw.lines().any(|line| {
+        line.split_whitespace()
+            .any(|token| matches!(token, "mSleeping=true" | "mShuttingDown=true"))
+    }) {
         return Ok(None);
     }
     let top: Vec<_> = raw

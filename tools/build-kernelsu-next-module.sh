@@ -20,11 +20,11 @@ RODIN_STABLE_ZIP="$RODIN_PROJECT_ROOT/out/Rodin-Essential-KernelSU-Next-Magisk.z
     exit 1
 }
 
-RODIN_NDK_VERSION="$(find "$RODIN_SDK_ROOT/ndk" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -1)"
+RODIN_NDK_VERSION="${RODIN_NDK_VERSION:-$(find "$RODIN_SDK_ROOT/ndk" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -1)}"
 RODIN_NDK="$RODIN_SDK_ROOT/ndk/$RODIN_NDK_VERSION"
 RODIN_TOOLCHAIN="$RODIN_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
 RODIN_STRIP="$RODIN_TOOLCHAIN/llvm-strip"
-RODIN_BUILD_TOOLS="$(find "$RODIN_SDK_ROOT/build-tools" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -1)"
+RODIN_BUILD_TOOLS="${RODIN_BUILD_TOOLS_VERSION:-$(find "$RODIN_SDK_ROOT/build-tools" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -1)}"
 RODIN_AAPT2="$RODIN_SDK_ROOT/build-tools/$RODIN_BUILD_TOOLS/aapt2"
 RODIN_APKSIGNER="$RODIN_SDK_ROOT/build-tools/$RODIN_BUILD_TOOLS/apksigner"
 RODIN_ZIPALIGN="$RODIN_SDK_ROOT/build-tools/$RODIN_BUILD_TOOLS/zipalign"
@@ -147,9 +147,16 @@ RODIN_CERT_DIGEST="$("$RODIN_APKSIGNER" verify --print-certs \
     "$RODIN_STAGE/app/RodinEssential.apk" \
     | sed -n 's/^.*certificate SHA-256 digest: //p' | head -n 1 \
     | tr '[:upper:]' '[:lower:]')"
-RODIN_EXPECTED_CERT_DIGEST="$(tr -d '[:space:]:' \
-    <"$RODIN_PROJECT_ROOT/android/package/release-cert.sha256" \
-    | tr '[:upper:]' '[:lower:]')"
+# Forks may pin their own certificate; otherwise retain the repository default.
+if [ -n "${RODIN_EXPECTED_CERT_SHA256:-}" ]; then
+    RODIN_EXPECTED_CERT_DIGEST="$(printf '%s' "$RODIN_EXPECTED_CERT_SHA256" | tr -d '[:space:]:' | tr '[:upper:]' '[:lower:]')"
+else
+    RODIN_EXPECTED_CERT_DIGEST="$(tr -d '[:space:]:' <"$RODIN_PROJECT_ROOT/android/package/release-cert.sha256" | tr '[:upper:]' '[:lower:]')"
+fi
+[[ "$RODIN_EXPECTED_CERT_DIGEST" =~ ^[0-9a-f]{64}$ ]] || {
+    echo "Invalid expected signing certificate SHA-256" >&2
+    exit 1
+}
 [[ "$RODIN_CERT_DIGEST" =~ ^[0-9a-f]{64}$ ]] || {
     echo "Unable to read APK signing certificate" >&2
     exit 1

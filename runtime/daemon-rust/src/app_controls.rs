@@ -167,8 +167,8 @@ impl Profile {
             profile.controls.insert(control, target);
         }
         if let Some(cpu) = value.get("cpu").filter(|v| !v.is_null()) {
-            fields(cpu, &["0", "4", "7"])?;
-            for policy in [0u8, 4, 7] {
+            fields(cpu, &["0", "2", "5", "7"])?;
+            for policy in [0u8, 2, 5, 7] {
                 let key = policy.to_string();
                 let Some(cluster) = cpu.get(&key) else {
                     continue;
@@ -558,7 +558,7 @@ mod tests {
             json!({"cores":0}),
             json!({"enabled":"yes"}),
             json!({"zram":8192}),
-            json!({"cpu":{"2":{"range":[1,2]}}}),
+            json!({"cpu":{"4":{"range":[1,2]}}}),
             json!({"cpu":{"0":{"range":[2100,1000]}}}),
             json!({"cpu":{"0":{"governor":"schedutil;reboot"}}}),
         ] {

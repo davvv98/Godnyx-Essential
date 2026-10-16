@@ -48,9 +48,9 @@ echo "===== 2. BUILD FLUTTER AOT RELEASE BUNDLE ====="
 
 echo
 echo "===== 3. DETECT TOOLCHAINS ====="
-BUILD_TOOLS="$(find "$SDK/build-tools" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -1)"
-PLATFORM="$(find "$SDK/platforms" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sed -nE 's/^android-([0-9]+)$/\1/p' | sort -n | tail -1)"
-NDK_VER="$(find "$SDK/ndk" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -1)"
+BUILD_TOOLS="${RODIN_BUILD_TOOLS_VERSION:-$(find "$SDK/build-tools" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -1)}"
+PLATFORM="${RODIN_PLATFORM_VERSION:-$(find "$SDK/platforms" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sed -nE 's/^android-([0-9]+)$/\1/p' | sort -n | tail -1)}"
+NDK_VER="${RODIN_NDK_VERSION:-$(find "$SDK/ndk" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -1)}"
 
 NDK="$SDK/ndk/$NDK_VER"
 LINKER="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android31-clang"
@@ -283,7 +283,7 @@ if [ -f "$DAEMON_BIN" ]; then
     adb push "$CTL_BIN" /data/local/tmp/rodin_ctl >/dev/null
     adb push "$ROOT/android/kernelsu-next/service.sh" /data/local/tmp/rodin-service.sh >/dev/null
     adb push "$ROOT/android/kernelsu-next/module.prop" /data/local/tmp/rodin-module.prop >/dev/null
-    adb shell "su -c 'if [ -f /data/adb/rodin-essential/watchdog.pid ]; then kill \$(cat /data/adb/rodin-essential/watchdog.pid) 2>/dev/null || true; fi; for p in \$(pidof rodin_daemon) \$(pidof rodin_essentiald); do kill -9 \$p 2>/dev/null || true; done; sleep 0.4; mkdir -p /data/adb/rodin-essential /data/adb/modules/nees_rodin_essential_backend/bin; cp -f /data/local/tmp/rodin_daemon /data/adb/modules/nees_rodin_essential_backend/bin/rodin_daemon; cp -f /data/local/tmp/rodin_ctl /data/adb/modules/nees_rodin_essential_backend/bin/rodin_ctl; cp -f /data/local/tmp/rodin-service.sh /data/adb/modules/nees_rodin_essential_backend/service.sh; cp -f /data/local/tmp/rodin-module.prop /data/adb/modules/nees_rodin_essential_backend/module.prop; touch /data/adb/modules/nees_rodin_essential_backend/skip_mount; chmod 0755 /data/adb/modules/nees_rodin_essential_backend/bin/rodin_daemon /data/adb/modules/nees_rodin_essential_backend/bin/rodin_ctl /data/adb/modules/nees_rodin_essential_backend/service.sh; chmod 0644 /data/adb/modules/nees_rodin_essential_backend/module.prop /data/adb/modules/nees_rodin_essential_backend/skip_mount; chown -R root:root /data/adb/rodin-essential /data/adb/modules/nees_rodin_essential_backend; nohup /data/adb/modules/nees_rodin_essential_backend/service.sh >/dev/null 2>&1 &'" >/dev/null
+    adb shell "su -c 'if [ -f /data/adb/onyx-essential/watchdog.pid ]; then kill \$(cat /data/adb/onyx-essential/watchdog.pid) 2>/dev/null || true; fi; for p in \$(pidof rodin_daemon) \$(pidof rodin_essentiald); do kill -9 \$p 2>/dev/null || true; done; sleep 0.4; mkdir -p /data/adb/onyx-essential /data/adb/modules/nees_rodin_essential_backend/bin; cp -f /data/local/tmp/rodin_daemon /data/adb/modules/nees_rodin_essential_backend/bin/rodin_daemon; cp -f /data/local/tmp/rodin_ctl /data/adb/modules/nees_rodin_essential_backend/bin/rodin_ctl; cp -f /data/local/tmp/rodin-service.sh /data/adb/modules/nees_rodin_essential_backend/service.sh; cp -f /data/local/tmp/rodin-module.prop /data/adb/modules/nees_rodin_essential_backend/module.prop; touch /data/adb/modules/nees_rodin_essential_backend/skip_mount; chmod 0755 /data/adb/modules/nees_rodin_essential_backend/bin/rodin_daemon /data/adb/modules/nees_rodin_essential_backend/bin/rodin_ctl /data/adb/modules/nees_rodin_essential_backend/service.sh; chmod 0644 /data/adb/modules/nees_rodin_essential_backend/module.prop /data/adb/modules/nees_rodin_essential_backend/skip_mount; chown -R root:root /data/adb/onyx-essential /data/adb/modules/nees_rodin_essential_backend; nohup /data/adb/modules/nees_rodin_essential_backend/service.sh >/dev/null 2>&1 &'" >/dev/null
     sleep 1
 fi
 

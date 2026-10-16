@@ -16,7 +16,7 @@ const SOCKET_NAME: &str = "rodin_essentiald_v15";
 const REVERSE_SOCKET_NAME: &str = "rodin_essential_app_v15";
 const LOOPBACK_PORT: u16 = 732;
 const LOOPBACK_PRIVILEGE_PROBE_PORT: u16 = 731;
-const EXTENDED_VALUE_COUNT: usize = 122;
+const EXTENDED_VALUE_COUNT: usize = 128;
 
 #[repr(C)]
 struct SockAddrUn {
@@ -79,9 +79,9 @@ struct Cache {
     cpu_online_mask: AtomicU32,
     cpu_freq_khz: [AtomicI64; 8],
     cpu_gov0: AtomicI32,
-    cpu_gov4: AtomicI32,
+    cpu_gov2: AtomicI32,
     cpu_gov7: AtomicI32,
-    cpu_available_mhz: [Mutex<Vec<i32>>; 3],
+    cpu_available_mhz: [Mutex<Vec<i32>>; 4],
     gpu_gov: AtomicI32,
     io_scheduler: AtomicI32,
     touch_hal: AtomicI32,
@@ -117,7 +117,7 @@ impl Cache {
             cpu_online_mask: AtomicU32::new(0),
             cpu_freq_khz: std::array::from_fn(|_| AtomicI64::new(-1)),
             cpu_gov0: AtomicI32::new(-1),
-            cpu_gov4: AtomicI32::new(-1),
+            cpu_gov2: AtomicI32::new(-1),
             cpu_gov7: AtomicI32::new(-1),
             cpu_available_mhz: std::array::from_fn(|_| Mutex::new(Vec::new())),
             gpu_gov: AtomicI32::new(-1),
@@ -612,7 +612,8 @@ fn cpu_mask(value: &str) -> u32 {
 
 fn cpu_gov_code(value: &str) -> i32 {
     match value {
-        "sugov_ext" => 0,
+        "walt" => 0,
+        "migov" => 5,
         "conservative" => 1,
         "powersave" => 2,
         "performance" => 3,
@@ -624,7 +625,8 @@ fn cpu_gov_code(value: &str) -> i32 {
 fn cpu_policy_slot(policy: i32) -> Option<usize> {
     match policy {
         0 => Some(0),
-        4 => Some(1),
+        2 => Some(1),
+        5 => Some(3),
         7 => Some(2),
         _ => None,
     }
@@ -636,6 +638,7 @@ fn gpu_gov_code(value: &str) -> i32 {
         "powersave" => 1,
         "performance" => 2,
         "simple_ondemand" => 3,
+        "msm-adreno-tz" => 4,
         _ => -1,
     }
 }
@@ -657,7 +660,7 @@ fn refresh(cache: &Cache) -> Result<(), String> {
             map.insert(k.to_string(), v.to_string());
         }
     }
-    if map.get("protocol").map(String::as_str) != Some("13.6") {
+    if map.get("protocol").map(String::as_str) != Some("onyx.1") {
         return Err("protocol mismatch".into());
     }
 
@@ -706,12 +709,16 @@ fn refresh(cache: &Cache) -> Result<(), String> {
         map.get("gov0").map(|v| cpu_gov_code(v)).unwrap_or(-1),
         Ordering::Release,
     );
-    cache.cpu_gov4.store(
-        map.get("gov4").map(|v| cpu_gov_code(v)).unwrap_or(-1),
+    cache.cpu_gov2.store(
+        map.get("gov2").map(|v| cpu_gov_code(v)).unwrap_or(-1),
         Ordering::Release,
     );
     cache.cpu_gov7.store(
         map.get("gov7").map(|v| cpu_gov_code(v)).unwrap_or(-1),
+        Ordering::Release,
+    );
+    cache.extended[127].store(
+        map.get("gov5").map(|v| cpu_gov_code(v)).unwrap_or(-1),
         Ordering::Release,
     );
     cache.gpu_gov.store(
@@ -768,7 +775,7 @@ fn refresh(cache: &Cache) -> Result<(), String> {
         ("perf_verified", 12),
         ("perf_verify_ok", 13),
         ("cpu_drift0", 14),
-        ("cpu_drift4", 15),
+        ("cpu_drift2", 15),
         ("cpu_drift7", 16),
         ("gpu_drift", 17),
         ("io_drift", 18),
@@ -801,8 +808,8 @@ fn refresh(cache: &Cache) -> Result<(), String> {
         ("gpu_uncap_active", 52),
         ("cpu_min0", 53),
         ("cpu_max0", 54),
-        ("cpu_min4", 55),
-        ("cpu_max4", 56),
+        ("cpu_min2", 55),
+        ("cpu_max2", 56),
         ("cpu_min7", 57),
         ("cpu_max7", 58),
         ("gpu_power_policy", 59),
@@ -816,14 +823,19 @@ fn refresh(cache: &Cache) -> Result<(), String> {
         ("touch_source_rate_x10", 67),
         ("cpu_live_min0", 68),
         ("cpu_live_max0", 69),
-        ("cpu_live_min4", 70),
-        ("cpu_live_max4", 71),
+        ("cpu_live_min2", 70),
+        ("cpu_live_max2", 71),
         ("cpu_live_min7", 72),
         ("cpu_live_max7", 73),
         ("cpu_freq_ack", 74),
         ("cpu_freq_drift0", 75),
-        ("cpu_freq_drift4", 76),
+        ("cpu_freq_drift2", 76),
         ("cpu_freq_drift7", 77),
+        ("cpu_min5", 122),
+        ("cpu_max5", 123),
+        ("cpu_live_min5", 124),
+        ("cpu_live_max5", 125),
+        ("cpu_freq_drift5", 126),
         ("display_native_density", 78),
         ("touch_resampler_path", 79),
         ("touch_resampler_error", 80),
@@ -866,7 +878,12 @@ fn refresh(cache: &Cache) -> Result<(), String> {
     };
     cache.extended[49].store(gov_code, Ordering::Release);
 
-    for (slot, key) in [(0, "cpu_avail0"), (1, "cpu_avail4"), (2, "cpu_avail7")] {
+    for (slot, key) in [
+        (0, "cpu_avail0"),
+        (1, "cpu_avail2"),
+        (2, "cpu_avail7"),
+        (3, "cpu_avail5"),
+    ] {
         let Some(raw) = map.get(key) else {
             continue;
         };
@@ -888,7 +905,8 @@ fn refresh(cache: &Cache) -> Result<(), String> {
 
 fn cpu_governor_name(code: i32) -> Option<&'static str> {
     match code {
-        0 => Some("sugov_ext"),
+        0 => Some("walt"),
+        5 => Some("migov"),
         1 => Some("conservative"),
         2 => Some("powersave"),
         3 => Some("performance"),
@@ -902,6 +920,7 @@ fn gpu_governor_name(code: i32) -> Option<&'static str> {
         1 => Some("powersave"),
         2 => Some("performance"),
         3 => Some("simple_ondemand"),
+        4 => Some("msm-adreno-tz"),
         _ => None,
     }
 }
@@ -946,7 +965,7 @@ fn perform(command: Command) -> Result<(), String> {
         Command::Performance(v) if (0..=3).contains(&v) => {
             request(&format!("SET perf {v}")).map(|_| ())
         }
-        Command::CpuGovernor(policy, code) if matches!(policy, 0 | 4 | 7) => {
+        Command::CpuGovernor(policy, code) if matches!(policy, 0 | 2 | 5 | 7) => {
             let name = cpu_governor_name(code).ok_or("invalid cpu governor code")?;
             request(&format!("SET cpu.gov {policy} {name}")).map(|_| ())
         }
@@ -1017,7 +1036,7 @@ fn perform(command: Command) -> Result<(), String> {
                     if let Some(r) = runtime() {
                         r.cache.extended[52].store(a, Ordering::Release);
                         if a == 1 {
-                            r.cache.extended[48].store(1300, Ordering::Release);
+                            r.cache.extended[48].store(1150, Ordering::Release);
                             r.cache.extended[51].store(0, Ordering::Release);
                         }
                     }
@@ -1114,7 +1133,7 @@ fn perform(command: Command) -> Result<(), String> {
                     let cmd_str = format!("SET gpu.power_policy {pol}");
                     return request(&cmd_str).map(|_| ());
                 }
-                23 if matches!(a, 0 | 4 | 7) => {
+                23 if matches!(a, 0 | 2 | 5 | 7) => {
                     if let Some(r) = runtime() {
                         match a {
                             0 => {
@@ -1362,7 +1381,7 @@ fn worker(cache: Arc<Cache>, rx: mpsc::Receiver<Command>) {
                     match refresh(&cache) {
                         Ok(()) => {
                             if !logged_pass {
-                                app_log(b"RODIN_BACKEND_APP=PASS protocol=13.6\0");
+                                app_log(b"RODIN_BACKEND_APP=PASS protocol=onyx.1\0");
                                 logged_pass = true;
                             }
                             logged_fail = false;
@@ -1452,7 +1471,7 @@ fn worker(cache: Arc<Cache>, rx: mpsc::Receiver<Command>) {
             match refresh(&cache) {
                 Ok(()) => {
                     if !logged_pass {
-                        app_log(b"RODIN_BACKEND_APP=PASS protocol=13.6\0");
+                        app_log(b"RODIN_BACKEND_APP=PASS protocol=onyx.1\0");
                         logged_pass = true;
                     }
                     logged_fail = false;
@@ -1631,7 +1650,8 @@ pub extern "C" fn rodin_backend_get_cpu_governor(policy: i32) -> i32 {
     runtime()
         .map(|r| match policy {
             0 => r.cache.cpu_gov0.load(Ordering::Acquire),
-            4 => r.cache.cpu_gov4.load(Ordering::Acquire),
+            2 => r.cache.cpu_gov2.load(Ordering::Acquire),
+            5 => r.cache.extended[127].load(Ordering::Acquire),
             7 => r.cache.cpu_gov7.load(Ordering::Acquire),
             _ => -1,
         })
@@ -1776,43 +1796,6 @@ pub extern "C" fn rodin_backend_get_performance_profile() -> i32 {
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn rodin_backend_set_performance_profile(v: i32) -> i32 {
-    if let Some(r) = runtime() {
-        r.cache.performance.store(v, Ordering::Release);
-        match v {
-            3 => {
-                r.cache.extended[47].store(1300, Ordering::Release); // min_freq
-                r.cache.extended[48].store(1300, Ordering::Release); // max_freq
-                r.cache.extended[49].store(1, Ordering::Release); // gov = performance
-                r.cache.extended[50].store(1, Ordering::Release); // ged_boost = 1
-                r.cache.extended[52].store(1, Ordering::Release); // uncap = 1
-                r.cache.extended[59].store(1, Ordering::Release); // power_policy = always_on
-            }
-            1 => {
-                r.cache.extended[47].store(260, Ordering::Release); // min_freq
-                r.cache.extended[48].store(1300, Ordering::Release); // max_freq
-                r.cache.extended[49].store(0, Ordering::Release); // gov = simple_ondemand
-                r.cache.extended[50].store(1, Ordering::Release); // ged_boost = 1
-                r.cache.extended[52].store(0, Ordering::Release); // uncap = 0
-                r.cache.extended[59].store(1, Ordering::Release); // power_policy = always_on
-            }
-            2 => {
-                r.cache.extended[47].store(260, Ordering::Release); // min_freq
-                r.cache.extended[48].store(598, Ordering::Release); // max_freq
-                r.cache.extended[49].store(2, Ordering::Release); // gov = powersave
-                r.cache.extended[50].store(0, Ordering::Release); // ged_boost = 0
-                r.cache.extended[52].store(0, Ordering::Release); // uncap = 0
-                r.cache.extended[59].store(0, Ordering::Release); // power_policy = coarse_demand
-            }
-            _ => {
-                r.cache.extended[47].store(260, Ordering::Release); // min_freq
-                r.cache.extended[48].store(1300, Ordering::Release); // max_freq
-                r.cache.extended[49].store(4, Ordering::Release); // gov = OEM dummy
-                r.cache.extended[50].store(0, Ordering::Release); // GED boost = off
-                r.cache.extended[52].store(0, Ordering::Release); // uncap = 0
-                r.cache.extended[59].store(0, Ordering::Release); // power_policy = coarse_demand
-            }
-        }
-    }
     send(Command::Performance(v))
 }
 

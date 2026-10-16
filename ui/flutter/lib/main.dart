@@ -10,6 +10,7 @@ import 'package:flutter/gestures.dart' show Drag;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/scheduler.dart';
+
 import 'aurora_game_engine.dart';
 import 'release_identity.dart';
 import 'page_motion.dart';
@@ -104,7 +105,7 @@ extension RodinScreenName on RodinScreen {
       case RodinScreen.zramSwap:
         return 'ZRAM & Swap Manager';
       case RodinScreen.maliGpu:
-        return 'MediaTek Mali GPU & GED';
+        return 'Adreno GPU & KGSL';
       case RodinScreen.systemColors:
         return 'System Colors';
       case RodinScreen.perAppControls:
@@ -961,9 +962,8 @@ class _RodinShellState extends State<RodinShell>
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
                                 colors: <Color>[
-                                  Theme.of(
-                                    context,
-                                  ).colorScheme.surface.withValues(alpha: 0),
+                                  Theme.of(context).colorScheme.surface
+                                      .withValues(alpha: 0),
                                   Theme.of(context).colorScheme.surface
                                       .withValues(alpha: isDark ? 0.74 : 0.86),
                                   Theme.of(context).colorScheme.surface,
@@ -1501,134 +1501,135 @@ class _ServiceSettingsCardState extends State<_ServiceSettingsCard> {
     return StreamBuilder<RodinBackendSnapshot>(
       stream: backend.snapshots,
       initialData: backend.latest,
-      builder: (BuildContext context, AsyncSnapshot<RodinBackendSnapshot> snapshot) {
-        final Color accent = RodinAppearanceScope.of(context).activeAccent;
-        final bool connected = snapshot.data?.ready ?? false;
-        final bool known = backend.extendedValue(116) >= 0;
-        final bool enabled = backend.serviceEnabled;
-        final bool busy = _pending || backend.serviceActionState == 1;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            const SectionLabel('Service & reset'),
-            const SizedBox(height: 9),
-            SurfaceCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Row(
+      builder:
+          (BuildContext context, AsyncSnapshot<RodinBackendSnapshot> snapshot) {
+            final Color accent = RodinAppearanceScope.of(context).activeAccent;
+            final bool connected = snapshot.data?.ready ?? false;
+            final bool known = backend.extendedValue(116) >= 0;
+            final bool enabled = backend.serviceEnabled;
+            final bool busy = _pending || backend.serviceActionState == 1;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const SectionLabel('Service & reset'),
+                const SizedBox(height: 9),
+                SurfaceCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Icon(
-                        Icons.power_settings_new_rounded,
-                        color: accent,
-                        size: 25,
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Text(
-                          'Enable Rodin Essential',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
+                      Row(
+                        children: <Widget>[
+                          Icon(
+                            Icons.power_settings_new_rounded,
+                            color: accent,
+                            size: 25,
                           ),
-                        ),
-                      ),
-                      Switch.adaptive(
-                        value: enabled,
-                        activeTrackColor: accent,
-                        onChanged: connected && known && !busy
-                            ? (bool value) =>
-                                  _change(reset: false, enable: value)
-                            : null,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    !connected
-                        ? 'Connect to the backend to manage device controls.'
-                        : !known
-                        ? 'Update the backend to use service controls.'
-                        : enabled
-                        ? 'Device controls are available. Your saved selections are restored after reboot.'
-                        : 'Background device control is paused. Open this page to enable it again.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      height: 1.45,
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  const Divider(height: 1),
-                  const SizedBox(height: 13),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            const Text(
-                              'Reset all device settings',
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Enable Rodin Essential',
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Restore captured originals and vendor defaults. Clear all saved device overrides.',
-                              style: TextStyle(
-                                fontSize: 12,
-                                height: 1.45,
-                                color: colors.onSurfaceVariant,
-                              ),
+                          ),
+                          Switch.adaptive(
+                            value: enabled,
+                            activeTrackColor: accent,
+                            onChanged: connected && known && !busy
+                                ? (bool value) =>
+                                      _change(reset: false, enable: value)
+                                : null,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        !connected
+                            ? 'Connect to the backend to manage device controls.'
+                            : !known
+                            ? 'Update the backend to use service controls.'
+                            : enabled
+                            ? 'Device controls are available. Your saved selections are restored after reboot.'
+                            : 'Background device control is paused. Open this page to enable it again.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          height: 1.45,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+                      const Divider(height: 1),
+                      const SizedBox(height: 13),
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                const Text(
+                                  'Reset all device settings',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Restore captured originals and vendor defaults. Clear all saved device overrides.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    height: 1.45,
+                                    color: colors.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 12),
+                          IconButton.filledTonal(
+                            style: IconButton.styleFrom(
+                              foregroundColor: accent,
+                              backgroundColor: accent.withValues(alpha: 0.12),
+                            ),
+                            tooltip: 'Reset all device settings',
+                            onPressed: connected && known && !busy
+                                ? () => _change(reset: true)
+                                : null,
+                            icon: const Icon(Icons.restart_alt_rounded),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      IconButton.filledTonal(
-                        style: IconButton.styleFrom(
-                          foregroundColor: accent,
-                          backgroundColor: accent.withValues(alpha: 0.12),
+                      if (busy) ...<Widget>[
+                        const SizedBox(height: 14),
+                        LinearProgressIndicator(color: accent),
+                        const SizedBox(height: 7),
+                        Text(
+                          'Applying service change…',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colors.onSurfaceVariant,
+                          ),
                         ),
-                        tooltip: 'Reset all device settings',
-                        onPressed: connected && known && !busy
-                            ? () => _change(reset: true)
-                            : null,
-                        icon: const Icon(Icons.restart_alt_rounded),
-                      ),
+                      ],
+                      if (_message != null) ...<Widget>[
+                        const SizedBox(height: 12),
+                        Text(
+                          _message!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: 1.45,
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
-                  if (busy) ...<Widget>[
-                    const SizedBox(height: 14),
-                    LinearProgressIndicator(color: accent),
-                    const SizedBox(height: 7),
-                    Text(
-                      'Applying service change…',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: colors.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                  if (_message != null) ...<Widget>[
-                    const SizedBox(height: 12),
-                    Text(
-                      _message!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        height: 1.45,
-                        color: colors.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        );
-      },
+                ),
+              ],
+            );
+          },
     );
   }
 }
@@ -3122,8 +3123,8 @@ class _HomePulseHero extends StatelessWidget {
         };
         final String profileDescription = switch (activePerf) {
           2 => 'Efficiency-first clocks and reduced power demand',
-          1 => 'Unrestricted 260–1300 MHz GPU scaling with GED boost',
-          3 => 'GPU locked at the 1300 MHz hardware ceiling',
+          1 => 'Unrestricted 264–1150 MHz GPU scaling with msm-adreno-tz',
+          3 => 'GPU requests a 1150 MHz frequency floor and ceiling',
           _ => 'OEM-balanced performance and efficiency for everyday use',
         };
         final int onlineCores = _rodinOnlineCoreCount(snapshot);
@@ -3189,9 +3190,8 @@ class _HomePulseHero extends StatelessWidget {
                               colors.surface.withValues(
                                 alpha: dark ? 0.76 : 0.90,
                               ),
-                              const Color(
-                                0xFFB087FF,
-                              ).withValues(alpha: dark ? 0.06 : 0.045),
+                              const Color(0xFFB087FF)
+                                  .withValues(alpha: dark ? 0.06 : 0.045),
                             ],
                             stops: const <double>[0, 0.58, 1],
                           ),
@@ -3694,7 +3694,7 @@ class _HomeQuickActions extends StatelessWidget {
         children: <Widget>[
           Expanded(
             child: _HomeQuickAction(
-              title: 'Mali GPU',
+              title: 'Adreno GPU',
               subtitle: 'Profiles',
               icon: Icons.sports_esports_rounded,
               accent: const Color(0xFFFF5252),
@@ -3998,7 +3998,7 @@ class _DisclaimerCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Rodin Essential provides direct kernel hardware tuning, MediaTek Mali GPU frequency locks, independent CPU frequency and topology control, and AIDL display calibrations via native ROM system interfaces. GPU modes never change CPU settings. Gaming Dynamic and Extreme Beast intentionally override only the vendor GPU cooling cap; sustained high clocks can cause severe heat, battery drain, instability, or hardware damage.',
+            'Rodin Essential provides direct kernel hardware tuning, Qualcomm Adreno GPU frequency locks, independent CPU frequency and topology control, and AIDL display calibrations via native ROM system interfaces. GPU modes never change CPU settings. GPU profiles request KGSL frequency bounds while kernel thermal limits remain active.',
             style: TextStyle(
               fontSize: 11.2,
               height: 1.45,
@@ -4389,17 +4389,17 @@ class HubsScreen extends StatelessWidget {
             : 260;
         final int rawMaxFreq = backend.extendedValue(48) >= 0
             ? backend.extendedValue(48)
-            : 1300;
+            : 1150;
         final int rawUncap = backend.extendedValue(52);
         final int activePerf = snapshot.performanceProfile >= 0
             ? snapshot.performanceProfile
             : 0;
         final bool isBeast =
-            (rawUncap == 1 && rawMinFreq == 1300 && rawMaxFreq == 1300) ||
+            (rawUncap == 1 && rawMinFreq == 1150 && rawMaxFreq == 1150) ||
             activePerf == 3;
         final String gpuLabel = liveGpuFreq >= 260
             ? '$liveGpuFreq MHz'
-            : (isBeast ? '1300 MHz' : '$rawMaxFreq MHz');
+            : (isBeast ? '1150 MHz' : '$rawMaxFreq MHz');
         final String displayMode = switch (snapshot.displayColor) {
           0 => 'Original PRO',
           1 => 'Vivid',
@@ -4458,7 +4458,7 @@ class HubsScreen extends StatelessWidget {
                     const _HubControlDivider(),
                     _HubControlRow(
                       emphasized: true,
-                      title: 'Mali GPU & GED',
+                      title: 'Adreno GPU & KGSL',
                       subtitle: 'Clocks, boost and power policy',
                       value: gpuLabel,
                       icon: Icons.sports_esports_rounded,
@@ -4484,8 +4484,7 @@ class HubsScreen extends StatelessWidget {
                     const _HubControlDivider(),
                     _HubControlRow(
                       title: 'Per-App Controls',
-                      subtitle:
-                          'Set individual touch, refresh rate, CPU and GPU controls for each app.',
+                      subtitle: 'Set individual touch, refresh rate, CPU and GPU controls for each app.',
                       wrapSubtitle: true,
                       icon: Icons.apps_rounded,
                       accent: const Color(0xFFB087FF),
@@ -5169,7 +5168,7 @@ class SupportScreen extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Engineered exclusively for Dimensity 8400-Ultra (MT6899 / rodin)',
+                        'Engineered exclusively for Snapdragon 8s Gen 4 (MT6899 / rodin)',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -6063,14 +6062,12 @@ class _ChargingBatteryCard extends StatelessWidget {
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(
-                                0xFF35C997,
-                              ).withValues(alpha: 0.14),
+                              color: const Color(0xFF35C997)
+                                  .withValues(alpha: 0.14),
                               borderRadius: BorderRadius.circular(99),
                               border: Border.all(
-                                color: const Color(
-                                  0xFF35C997,
-                                ).withValues(alpha: 0.35),
+                                color: const Color(0xFF35C997)
+                                    .withValues(alpha: 0.35),
                               ),
                             ),
                             child: Text(
@@ -7128,9 +7125,9 @@ class _TouchBoostScreenState extends State<TouchBoostScreen> {
                           style: TextStyle(
                             fontSize: 11.5,
                             height: 1.25,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -7143,8 +7140,7 @@ class _TouchBoostScreenState extends State<TouchBoostScreen> {
             const SurfaceCard(
               child: _InfoBlock(
                 title: 'Tester values',
-                text:
-                    '250 uses the native 240 Hz panel target and 500 uses the native 480 Hz target; simple tester apps round those values to about 250 and 500. The 1000 option delivers a one-millisecond Android event stream from the 480 Hz native source. OEM Control releases the fixed profile and returns timing to vendor management.',
+                text: '250 uses the native 240 Hz panel target and 500 uses the native 480 Hz target; simple tester apps round those values to about 250 and 500. The 1000 option delivers a one-millisecond Android event stream from the 480 Hz native source. OEM Control releases the fixed profile and returns timing to vendor management.',
               ),
             ),
           ],
@@ -7533,8 +7529,7 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
         const SurfaceCard(
           child: _InfoBlock(
             title: 'ROM ownership',
-            text:
-                'OEM Control stops Rodin Essential from applying this setting at boot or wake. Saved overrides restore automatically. Returning to OEM does not guess your ROM’s colour profile: the current appearance can remain until your ROM reapplies its display settings.',
+            text: 'OEM Control stops Rodin Essential from applying this setting at boot or wake. Saved overrides restore automatically. Returning to OEM does not guess your ROM’s colour profile: the current appearance can remain until your ROM reapplies its display settings.',
           ),
         ),
         const SizedBox(height: 9),
@@ -8089,11 +8084,11 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
         }
 
         int efficiencyOnline = 0;
-        for (int c = 0; c <= 3; c++) {
+        for (int c = 0; c <= 1; c++) {
           if (s.cpuOnline(c)) efficiencyOnline++;
         }
         int performanceOnline = 0;
-        for (int c = 4; c <= 6; c++) {
+        for (int c = 2; c <= 6; c++) {
           if (s.cpuOnline(c)) performanceOnline++;
         }
         int primeOnline = s.cpuOnline(7) ? 1 : 0;
@@ -8167,9 +8162,8 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFF38BDF8,
-                                ).withValues(alpha: 0.15),
+                                color: const Color(0xFF38BDF8)
+                                    .withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: const Icon(
@@ -8187,7 +8181,7 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
                                     fit: BoxFit.scaleDown,
                                     alignment: Alignment.centerLeft,
                                     child: Text(
-                                      'Dimensity 8400-Ultra CPU',
+                                      'Snapdragon 8s Gen 4 CPU',
                                       style: TextStyle(
                                         fontSize: 14.5,
                                         fontWeight: FontWeight.w800,
@@ -8213,24 +8207,24 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
                         Row(
                           children: <Widget>[
                             _buildHeroStat(
-                              label: 'EFFICIENCY (4C)',
-                              val: '$efficiencyOnline / 4 Online',
+                              label: 'EFFICIENCY (2C)',
+                              val: '$efficiencyOnline / 2 Online',
                               accent: const Color(0xFF4EA8DE),
-                              sub: '4× Cortex-A725',
+                              sub: '2× Cortex-A720',
                             ),
                             const SizedBox(width: 8),
                             _buildHeroStat(
-                              label: 'PERFORMANCE (3C)',
-                              val: '$performanceOnline / 3 Online',
+                              label: 'PERFORMANCE (5C)',
+                              val: '$performanceOnline / 5 Online',
                               accent: const Color(0xFFA066FF),
-                              sub: '3× Cortex-A725',
+                              sub: '5× Cortex-A720',
                             ),
                             const SizedBox(width: 8),
                             _buildHeroStat(
                               label: 'PRIME (1C)',
                               val: '$primeOnline / 1 Online',
                               accent: const Color(0xFFFF8E3C),
-                              sub: '1× Cortex-A725',
+                              sub: '1× Cortex-X4',
                             ),
                           ],
                         ),
@@ -8253,9 +8247,9 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
                 _CpuFrequencyCard(
                   policy: 0,
                   title: 'Efficiency Cluster',
-                  subtitle: '4× Cortex-A725 · Cores 0–3 · 256KB L2',
+                  subtitle: '2× Cortex-A720 · Cores 0–1',
                   accent: const Color(0xFF4EA8DE),
-                  currentMhz: clusterCurrentMhz(const <int>[0, 1, 2, 3]),
+                  currentMhz: clusterCurrentMhz(const <int>[0, 1]),
                   targetMinMhz: backend.cpuTargetMinFrequency(0),
                   targetMaxMhz: backend.cpuTargetMaxFrequency(0),
                   liveMinMhz: backend.cpuLiveMinFrequency(0),
@@ -8269,19 +8263,37 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
                 ),
                 const SizedBox(height: 9),
                 _CpuFrequencyCard(
-                  policy: 4,
-                  title: 'Performance Cluster',
-                  subtitle: '3× Cortex-A725 · Cores 4–6 · 512KB L2',
+                  policy: 2,
+                  title: 'Performance Cluster A',
+                  subtitle: '3× Cortex-A720 · Cores 2–4',
                   accent: const Color(0xFFA066FF),
-                  currentMhz: clusterCurrentMhz(const <int>[4, 5, 6]),
-                  targetMinMhz: backend.cpuTargetMinFrequency(4),
-                  targetMaxMhz: backend.cpuTargetMaxFrequency(4),
-                  liveMinMhz: backend.cpuLiveMinFrequency(4),
-                  liveMaxMhz: backend.cpuLiveMaxFrequency(4),
-                  availableMhz: backend.cpuAvailableFrequencies(4),
-                  governorCode: s.cpuGovernor4,
+                  currentMhz: clusterCurrentMhz(const <int>[2, 3, 4]),
+                  targetMinMhz: backend.cpuTargetMinFrequency(2),
+                  targetMaxMhz: backend.cpuTargetMaxFrequency(2),
+                  liveMinMhz: backend.cpuLiveMinFrequency(2),
+                  liveMaxMhz: backend.cpuLiveMaxFrequency(2),
+                  availableMhz: backend.cpuAvailableFrequencies(2),
+                  governorCode: s.cpuGovernor2,
                   writeAck: frequencyWriteAck,
-                  drift: backend.cpuFrequencyDrift(4),
+                  drift: backend.cpuFrequencyDrift(2),
+                  enabled: canWrite,
+                  onFeedback: _showGlassToast,
+                ),
+                const SizedBox(height: 9),
+                _CpuFrequencyCard(
+                  policy: 5,
+                  title: 'Performance Cluster B',
+                  subtitle: '2× Cortex-A720 · Cores 5–6',
+                  accent: const Color(0xFFA066FF),
+                  currentMhz: clusterCurrentMhz(const <int>[5, 6]),
+                  targetMinMhz: backend.cpuTargetMinFrequency(5),
+                  targetMaxMhz: backend.cpuTargetMaxFrequency(5),
+                  liveMinMhz: backend.cpuLiveMinFrequency(5),
+                  liveMaxMhz: backend.cpuLiveMaxFrequency(5),
+                  availableMhz: backend.cpuAvailableFrequencies(5),
+                  governorCode: s.cpuGovernor5,
+                  writeAck: frequencyWriteAck,
+                  drift: backend.cpuFrequencyDrift(5),
                   enabled: canWrite,
                   onFeedback: _showGlassToast,
                 ),
@@ -8289,7 +8301,7 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
                 _CpuFrequencyCard(
                   policy: 7,
                   title: 'Prime Core',
-                  subtitle: '1× Cortex-A725 · Core 7 · 1MB L2',
+                  subtitle: '1× Cortex-X4 · Core 7',
                   accent: const Color(0xFFFF8E3C),
                   currentMhz: clusterCurrentMhz(const <int>[7]),
                   targetMinMhz: backend.cpuTargetMinFrequency(7),
@@ -8307,8 +8319,7 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
                 const SurfaceCard(
                   child: _InfoBlock(
                     title: 'How to use CPU frequency control',
-                    text:
-                        'Choose Dynamic Range to set the minimum and maximum, or Exact Lock to make both limits the same. Drag to a supported clock and tap Apply. Live Limits always shows the range currently enforced by the kernel. Each card shows the current governor live; governor selection remains in Advanced Configuration. OEM Reset clears the saved target and returns that cluster to ROM-managed limits.',
+                    text: 'Choose Dynamic Range to set the minimum and maximum, or Exact Lock to make both limits the same. Drag to a supported clock and tap Apply. Live Limits always shows the range currently enforced by the kernel. Each card shows the current governor live; governor selection remains in Advanced Configuration. OEM Reset clears the saved target and returns that cluster to ROM-managed limits.',
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -8384,7 +8395,7 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
                             isDark: isDark,
                             colors: colors,
                             title: 'Power Saver',
-                            subtitle: 'Efficiency Cores 0–3',
+                            subtitle: 'Efficiency Cores 0–1',
                             icon: Icons.eco_rounded,
                             accent: const Color(0xFF35C997),
                             onTap: () => _applyCorePreset(
@@ -8429,7 +8440,7 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
                                   ),
                                 ),
                                 Text(
-                                  '4× Cortex-A725 · Cores 0–3 · $efficiencyOnline/4 Online',
+                                  '2× Cortex-A720 · Cores 0–1 · $efficiencyOnline/2 Online',
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: colors.onSurfaceVariant,
@@ -8496,7 +8507,7 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
                                   ),
                                 ),
                                 Text(
-                                  '3× Cortex-A725 · Cores 4–6 · $performanceOnline/3 Online',
+                                  '5× Cortex-A720 · Cores 2–6 · $performanceOnline/5 Online',
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: colors.onSurfaceVariant,
@@ -8561,7 +8572,7 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
                                   ),
                                 ),
                                 Text(
-                                  '1× Cortex-A725 · Core 7 · $primeOnline/1 Online',
+                                  '1× Cortex-X4 · Core 7 · $primeOnline/1 Online',
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: colors.onSurfaceVariant,
@@ -8646,8 +8657,7 @@ class _CpuControlScreenState extends State<CpuControlScreen> {
                 const SurfaceCard(
                   child: _InfoBlock(
                     title: 'Processor Core Safety',
-                    text:
-                        'Primary core (CPU0) remains permanently active to ensure kernel and essential background services run smoothly. Core states persist across device reboots.',
+                    text: 'Primary core (CPU0) remains permanently active to ensure kernel and essential background services run smoothly. Core states persist across device reboots.',
                   ),
                 ),
                 const SizedBox(height: 80),
@@ -8896,7 +8906,8 @@ class _CpuFrequencyCardState extends State<_CpuFrequencyCard> {
   }
 
   String _governorLabel() => switch (widget.governorCode) {
-    0 => 'sugov_ext',
+    0 => 'walt',
+    5 => 'migov',
     1 => 'conservative',
     2 => 'powersave',
     3 => 'performance',
@@ -9490,7 +9501,8 @@ class _AdvancedConfigurationScreenState
   @override
   Widget build(BuildContext context) {
     const List<_ChoiceOption> cpuGovernors = <_ChoiceOption>[
-      _ChoiceOption(0, 'sugov_ext'),
+      _ChoiceOption(0, 'walt'),
+      _ChoiceOption(5, 'migov'),
       _ChoiceOption(1, 'conservative'),
       _ChoiceOption(2, 'powersave'),
       _ChoiceOption(3, 'performance'),
@@ -9531,15 +9543,14 @@ class _AdvancedConfigurationScreenState
               icon: Icons.tune_rounded,
               accent: Color(0xFFFF9F68),
               title: 'Persistent System Tuning',
-              subtitle:
-                  'Settings are saved securely and automatically maintained in the background',
+              subtitle: 'Settings are saved securely and automatically maintained in the background',
             ),
             const SizedBox(height: 12),
             const SectionLabel('CPU governors'),
             const SizedBox(height: 8),
             _ChoiceCard(
               title: 'Efficiency cluster',
-              subtitle: 'Efficiency cores (Cores 0–3)',
+              subtitle: 'Efficiency cores (Cores 0–1)',
               icon: Icons.memory_rounded,
               accent: const Color(0xFF46CFA1),
               selectedCode: snapshot.cpuGovernor0,
@@ -9549,14 +9560,25 @@ class _AdvancedConfigurationScreenState
             ),
             const SizedBox(height: 9),
             _ChoiceCard(
-              title: 'Performance cluster',
-              subtitle: 'Performance cores (Cores 4–6)',
+              title: 'Performance cluster A',
+              subtitle: 'Performance cores (Cores 2–4)',
               icon: Icons.memory_rounded,
               accent: const Color(0xFFB087FF),
-              selectedCode: snapshot.cpuGovernor4,
+              selectedCode: snapshot.cpuGovernor2,
               options: cpuGovernors,
               enabled: snapshot.controlsAvailable && !snapshot.busy,
-              onSelected: (int code) => backend.setCpuGovernor(4, code),
+              onSelected: (int code) => backend.setCpuGovernor(2, code),
+            ),
+            const SizedBox(height: 9),
+            _ChoiceCard(
+              title: 'Performance cluster B',
+              subtitle: 'Performance cores (Cores 5–6)',
+              icon: Icons.memory_rounded,
+              accent: const Color(0xFFB087FF),
+              selectedCode: snapshot.cpuGovernor5,
+              options: cpuGovernors,
+              enabled: snapshot.controlsAvailable && !snapshot.busy,
+              onSelected: (int code) => backend.setCpuGovernor(5, code),
             ),
             const SizedBox(height: 9),
             _ChoiceCard(
@@ -9748,8 +9770,7 @@ class _ResolutionScreenState extends State<ResolutionScreen> {
             height: 2712,
             density: nativeDensity,
             aspectRatio: '20:9',
-            description:
-                'Rodin physical hardware panel resolution. Maximum sharpness and true 1:1 pixel rendering with zero scaling.',
+            description: 'Rodin physical hardware panel resolution. Maximum sharpness and true 1:1 pixel rendering with zero scaling.',
             accentColor: const Color(0xFF59BCFF),
             icon: Icons.auto_awesome_rounded,
             isActive: isNative,
@@ -9762,8 +9783,7 @@ class _ResolutionScreenState extends State<ResolutionScreen> {
             height: 2400,
             density: _densityForWidth(nativeDensity, 1080),
             aspectRatio: '20:9',
-            description:
-                'Reduces GPU rasterization load by ~22%. Boosts sustained 120 FPS frame stability in heavy 3D games.',
+            description: 'Reduces GPU rasterization load by ~22%. Boosts sustained 120 FPS frame stability in heavy 3D games.',
             accentColor: const Color(0xFF38E598),
             icon: Icons.sports_esports_rounded,
             isActive: isFhd,
@@ -9776,8 +9796,7 @@ class _ResolutionScreenState extends State<ResolutionScreen> {
             height: 1600,
             density: _densityForWidth(nativeDensity, 720),
             aspectRatio: '20:9',
-            description:
-                'Lowest GPU workload and power consumption. Drastically extends battery life in emergency situations.',
+            description: 'Lowest GPU workload and power consumption. Drastically extends battery life in emergency situations.',
             accentColor: const Color(0xFFFFA048),
             icon: Icons.battery_charging_full_rounded,
             isActive: isHd,
@@ -9790,8 +9809,7 @@ class _ResolutionScreenState extends State<ResolutionScreen> {
             height: 3200,
             density: _densityForWidth(nativeDensity, 1440),
             aspectRatio: '20:9',
-            description:
-                'Downscaled 2K virtual canvas for maximum screen real estate and ultra-compact multitasking view.',
+            description: 'Downscaled 2K virtual canvas for maximum screen real estate and ultra-compact multitasking view.',
             accentColor: const Color(0xFFB087FF),
             icon: Icons.fullscreen_rounded,
             isActive: isQhd,
@@ -9934,9 +9952,8 @@ class _ResolutionScreenState extends State<ResolutionScreen> {
                         style: OutlinedButton.styleFrom(
                           foregroundColor: const Color(0xFF59BCFF),
                           side: BorderSide(
-                            color: const Color(
-                              0xFF59BCFF,
-                            ).withValues(alpha: 0.4),
+                            color: const Color(0xFF59BCFF)
+                                .withValues(alpha: 0.4),
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(13),
@@ -10856,8 +10873,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
             title: 'Disabled (0 GB)',
             badge: 'PURE RAM',
             sizeMb: 0,
-            description:
-                'Disables compressed swap partition completely. Pure physical RAM only with zero CPU memory overhead.',
+            description: 'Disables compressed swap partition completely. Pure physical RAM only with zero CPU memory overhead.',
             accentColor: const Color(0xFFFFB84D),
             icon: Icons.power_settings_new_rounded,
             isActive: !_isCustomMode && activeSizeMb == 0,
@@ -10866,8 +10882,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
             title: '4 GB (Light RAM Plus)',
             badge: '4 GB SWAP',
             sizeMb: 4096,
-            description:
-                'Provides 4,096 MB compressed memory space. Ideal for light usage and minimal background caching.',
+            description: 'Provides 4,096 MB compressed memory space. Ideal for light usage and minimal background caching.',
             accentColor: const Color(0xFF59BCFF),
             icon: Icons.storage_rounded,
             isActive: !_isCustomMode && activeSizeMb == 4096,
@@ -10876,8 +10891,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
             title: '8 GB (Stock Optimal)',
             badge: '8 GB DEFAULT',
             sizeMb: 8192,
-            description:
-                'Recommended factory configuration for Rodin. Perfect balance of multitasking speed and battery life.',
+            description: 'Recommended factory configuration for Rodin. Perfect balance of multitasking speed and battery life.',
             accentColor: const Color(0xFF41C98A),
             icon: Icons.verified_rounded,
             isActive: !_isCustomMode && activeSizeMb == 8192,
@@ -10886,8 +10900,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
             title: '12 GB (Power Multitask)',
             badge: '12 GB POWER',
             sizeMb: 12288,
-            description:
-                'High-capacity 12,288 MB virtual memory buffer. Keeps dozens of apps alive in background with zero redraws.',
+            description: 'High-capacity 12,288 MB virtual memory buffer. Keeps dozens of apps alive in background with zero redraws.',
             accentColor: const Color(0xFFB087FF),
             icon: Icons.all_inclusive_rounded,
             isActive: !_isCustomMode && activeSizeMb == 12288,
@@ -10896,8 +10909,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
             title: '16 GB (Extreme Gaming)',
             badge: '16 GB MAX',
             sizeMb: 16384,
-            description:
-                'Maximum 16,384 MB virtual RAM headroom. Optimized for demanding 3D games, emulation, and heavy tasks.',
+            description: 'Maximum 16,384 MB virtual RAM headroom. Optimized for demanding 3D games, emulation, and heavy tasks.',
             accentColor: const Color(0xFFFF8A65),
             icon: Icons.rocket_launch_rounded,
             isActive: !_isCustomMode && activeSizeMb == 16384,
@@ -11232,8 +11244,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
                       _AlgorithmOptionCard(
                         title: 'LZ4 (Ultra Fast)',
                         badge: 'RECOMMENDED',
-                        description:
-                            'Highest decompression speed and near-zero CPU overhead. Ideal for 120 FPS UI and gaming.',
+                        description: 'Highest decompression speed and near-zero CPU overhead. Ideal for 120 FPS UI and gaming.',
                         code: 0,
                         activeCode: algCode,
                         accent: const Color(0xFF41C98A),
@@ -11243,8 +11254,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
                       _AlgorithmOptionCard(
                         title: 'ZSTD (Maximum Density)',
                         badge: 'MAX RATIO',
-                        description:
-                            'State-of-the-art compression ratio. Compresses up to 40% more data into physical RAM.',
+                        description: 'State-of-the-art compression ratio. Compresses up to 40% more data into physical RAM.',
                         code: 1,
                         activeCode: algCode,
                         accent: const Color(0xFF67C2FF),
@@ -11254,8 +11264,7 @@ class _ZramSwapScreenState extends State<ZramSwapScreen> {
                       _AlgorithmOptionCard(
                         title: 'LZO-RLE (Balanced)',
                         badge: 'BALANCED',
-                        description:
-                            'Standard Android kernel algorithm with run-length zero-page acceleration.',
+                        description: 'Standard Android kernel algorithm with run-length zero-page acceleration.',
                         code: 2,
                         activeCode: algCode,
                         accent: const Color(0xFFB087FF),
@@ -11836,17 +11845,19 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
 
     setState(() {
       _optimisticProfile = profileCode;
-      _optimisticMinFreq = min;
-      _optimisticMaxFreq = max;
-      _optimisticGov = gov;
-      _optimisticGedBoost = ged;
-      _optimisticPowerPolicy = powerPolicy;
+      _optimisticMinFreq = profileCode == 0 ? null : min;
+      _optimisticMaxFreq = profileCode == 0 ? null : max;
+      _optimisticGov = null;
+      _optimisticGedBoost = false;
+      _optimisticPowerPolicy = null;
       _optimisticUncap = willUncap;
     });
 
     _showGlassToast(
       'GPU PRESET',
-      'Applied $name ($min–$max MHz)',
+      profileCode == 0
+          ? 'Requested saved OEM bounds'
+          : 'Requested $name ($min–$max MHz)',
       icon,
       accent,
     );
@@ -11929,16 +11940,17 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
     setState(() {
       _optimisticProfile = 0;
       _optimisticUncap = false;
-      _optimisticMinFreq = 260;
-      _optimisticMaxFreq = 1300;
-      _optimisticGov = 4;
+      _optimisticMinFreq = 264;
+      _optimisticMaxFreq = null;
+      _optimisticMinFreq = null;
+      _optimisticGov = null;
       _optimisticGedBoost = false;
       _optimisticPowerPolicy = 0;
     });
 
     _showGlassToast(
       'GPU RESET',
-      'Restored MediaTek Stock Balanced Settings',
+      'Requested the saved OEM GPU frequency bounds',
       Icons.restore_rounded,
       const Color(0xFF67C2FF),
     );
@@ -11978,10 +11990,10 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
             : 0;
         final int rawMinFreq = backend.extendedValue(47) >= 0
             ? backend.extendedValue(47)
-            : 260;
+            : 264;
         final int rawMaxFreq = backend.extendedValue(48) >= 0
             ? backend.extendedValue(48)
-            : 1300;
+            : 1150;
         final int rawGovCode = backend.extendedValue(49) >= 0
             ? backend.extendedValue(49)
             : 0;
@@ -12008,23 +12020,23 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
                 ? snapshot.performanceProfile
                 : 0);
         final int requestedMaxFreq = switch (activePerf) {
-          3 => 1300,
-          1 => 1300,
-          2 => 598,
+          3 => 1150,
+          1 => 1150,
+          2 => 510,
           _ => rawMaxFreq,
         };
         final bool hasHardwareReadback = _optimisticProfile == null;
         final bool isThrottledByOs =
             hasHardwareReadback &&
             ((activePerf == 3 &&
-                    ((liveCurFreq > 0 && liveCurFreq < 1300) ||
+                    ((liveCurFreq > 0 && liveCurFreq < 1150) ||
                         rawMaxFreq < requestedMaxFreq)) ||
                 ((activePerf == 1 || activePerf == 2) &&
                     rawMaxFreq < requestedMaxFreq));
         final bool isBeast =
             activePerf == 3 ||
             isUncapped ||
-            (activeMinFreq == 1300 && activeMaxFreq == 1300);
+            (activeMinFreq == 1150 && activeMaxFreq == 1150);
         final bool isGaming = !isBeast && activePerf == 1;
         final bool isBattery = !isBeast && activePerf == 2;
         final Color mainColor = isBeast
@@ -12048,11 +12060,11 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
             : (isGaming
                   ? (liveCurFreq > 0
                         ? 'Live: $liveCurFreq MHz · Scaling freely to 1.30 GHz'
-                        : 'Full-range scaling · 260–1300 MHz')
+                        : 'Full-range scaling · 264–1150 MHz')
                   : (isBattery
                         ? (liveCurFreq > 0
-                              ? 'Live: $liveCurFreq MHz · Efficiency cap at 598 MHz'
-                              : 'Efficiency range · 260–598 MHz')
+                              ? 'Live: $liveCurFreq MHz · Efficiency cap at 510 MHz'
+                              : 'Efficiency range · 264–510 MHz')
                         : (liveCurFreq > 0
                               ? 'Live: $liveCurFreq MHz · OEM-managed behavior'
                               : 'Vendor-managed clocks and power policy')));
@@ -12062,7 +12074,7 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
             RodinScrollPage(
               children: <Widget>[
                 DetailHeader(
-                  title: 'Mali GPU & GED',
+                  title: 'Adreno GPU & KGSL',
                   onBack: widget.onBack,
                   trailing: PressScale(
                     onTap: _resetDefault,
@@ -12081,7 +12093,7 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Live Mali telemetry, GPU modes, GED boost, and frequency policy',
+                  'Live KGSL telemetry and validated Adreno frequency profiles',
                   style: TextStyle(
                     fontSize: 13.5,
                     color: colors.onSurfaceVariant,
@@ -12093,7 +12105,7 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
                 HeroCard(
                   icon: modeIcon,
                   accent: mainColor,
-                  title: 'Mali-G720 Graphics',
+                  title: 'Adreno 825 Graphics',
                   subtitle: modeSummary,
                 ),
                 const SizedBox(height: 12),
@@ -12182,7 +12194,7 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
     final bool isBeast =
         activeProfile == 3 ||
         isUncapped ||
-        (minFreq == 1300 && maxFreq == 1300);
+        (minFreq == 1150 && maxFreq == 1150);
     final bool isGaming = !isBeast && activeProfile == 1;
     final bool isBattery = !isBeast && activeProfile == 2;
 
@@ -12198,14 +12210,14 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
 
     final String clockSubtext = isBeast
         ? (isThrottledByOs
-              ? 'External clock limit detected · 1300 MHz remains the target'
-              : (profileVerified && liveCurFreq == 1300
+              ? 'External clock limit detected · 1150 MHz remains the target'
+              : (profileVerified && liveCurFreq == 1150
                     ? 'Fixed 1.30 GHz target verified from live hardware telemetry'
                     : 'Fixed 1.30 GHz target requested · waiting for live verification'))
         : (isGaming
               ? (liveCurFreq > 0
                     ? 'Dynamic Gaming Load ($liveCurFreq MHz · 1.30 GHz Ceiling)'
-                    : 'Standby Dynamic (260 – 1300 MHz · GED Boost Active)')
+                    : 'Standby Dynamic (264 – 1150 MHz · KGSL DVFS Active)')
               : (isBattery
                     ? (liveCurFreq > 0
                           ? 'Live $liveCurFreq MHz · $minFreq–$maxFreq MHz Battery Range'
@@ -12259,7 +12271,7 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
                       ),
                     ),
                     Text(
-                      'Dimensity 8400-Ultra · Mali-G720 7-Core',
+                      'Snapdragon 8s Gen 4 · Adreno 825',
                       style: TextStyle(
                         fontSize: 11.5,
                         color: colors.onSurfaceVariant,
@@ -12268,7 +12280,7 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
                   ],
                 ),
               ),
-              if (maxFreq >= 1300)
+              if (maxFreq >= 1150)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
@@ -12491,7 +12503,7 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
   }) {
     final bool isBeast =
         activeProfile == 3 ||
-        (activeProfile < 0 && isUncapped && minFreq == 1300 && maxFreq == 1300);
+        (activeProfile < 0 && isUncapped && minFreq == 1150 && maxFreq == 1150);
     final bool isGaming = activeProfile == 1;
     final bool isBattery = activeProfile == 2;
     final bool isStock = !isBeast && !isGaming && !isBattery;
@@ -12516,14 +12528,14 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
                 isDark: isDark,
                 colors: colors,
                 title: 'Extreme Beast',
-                range: '1300 MHz fixed · No downclock',
+                range: '1150 MHz requested · Thermal limits apply',
                 icon: Icons.bolt_rounded,
                 accent: const Color(0xFFFF5252),
                 isActive: isBeast,
                 onTap: () => onSelect(
                   3,
-                  1300,
-                  1300,
+                  1150,
+                  1150,
                   1,
                   true,
                   1,
@@ -12539,14 +12551,14 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
                 isDark: isDark,
                 colors: colors,
                 title: 'Gaming Dynamic',
-                range: '260–1300 MHz · Full-range scaling',
+                range: '264–1150 MHz · Full-range scaling',
                 icon: Icons.sports_esports_rounded,
                 accent: const Color(0xFFFFB84D),
                 isActive: isGaming,
                 onTap: () => onSelect(
                   1,
-                  260,
-                  1300,
+                  264,
+                  1150,
                   0,
                   true,
                   1,
@@ -12572,8 +12584,8 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
                 isActive: isStock,
                 onTap: () => onSelect(
                   0,
-                  260,
-                  1300,
+                  264,
+                  1150,
                   4,
                   false,
                   0,
@@ -12589,18 +12601,18 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
                 isDark: isDark,
                 colors: colors,
                 title: 'Battery Saver',
-                range: '260–598 MHz · Efficiency cap',
+                range: '264–510 MHz · Efficiency cap',
                 icon: Icons.energy_savings_leaf_rounded,
                 accent: const Color(0xFF41C98A),
                 isActive: isBattery,
                 onTap: () => onSelect(
                   2,
-                  260,
-                  598,
+                  264,
+                  510,
                   2,
                   false,
                   0,
-                  'Battery Saver · 598 MHz Cap',
+                  'Battery Saver · 510 MHz Cap',
                   Icons.energy_savings_leaf_rounded,
                   const Color(0xFF41C98A),
                 ),
@@ -12699,409 +12711,10 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
     required ValueChanged<int> onSelectGov,
     required ValueChanged<int> onSelectPowerPolicy,
   }) {
-    return SurfaceCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          // Profile-controlled GED Instant Boost status
-          Row(
-            children: <Widget>[
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF5252).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.flash_on_rounded,
-                  size: 18,
-                  color: Color(0xFFFF5252),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      'MediaTek GED Instant Boost',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: colors.onSurface,
-                      ),
-                    ),
-                    Text(
-                      gedProfileEnabled
-                          ? (gedBoost
-                                ? 'Active for this performance mode'
-                                : 'Starting boost for this performance mode')
-                          : 'Off in Stock Balanced and Battery Saver',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: colors.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 11,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: gedBoost
-                      ? const Color(0xFFFF5252).withValues(alpha: 0.16)
-                      : colors.onSurfaceVariant.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: gedBoost
-                        ? const Color(0xFFFF5252).withValues(alpha: 0.55)
-                        : colors.onSurfaceVariant.withValues(alpha: 0.20),
-                  ),
-                ),
-                child: Text(
-                  gedBoost ? 'ON' : 'OFF',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5,
-                    color: gedBoost
-                        ? const Color(0xFFFF5252)
-                        : colors.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(height: 1),
-          ),
-
-          // Mali Hardware Power Policy (Always On vs Coarse Demand)
-          Row(
-            children: <Widget>[
-              Text(
-                'MALI POWER POLICY (CSF DRIVER)',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.6,
-                  color: colors.onSurfaceVariant,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                powerPolicyCode == 1 ? 'Zero Latency' : 'Dynamic Sleep',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: powerPolicyCode == 1
-                      ? const Color(0xFFFF5252)
-                      : const Color(0xFF41C98A),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Controls GPU shader core power domain gating and idle sleep states',
-            style: TextStyle(fontSize: 10.5, color: colors.onSurfaceVariant),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: _buildPolicySegment(
-                  isDark: isDark,
-                  colors: colors,
-                  label: 'Coarse Demand',
-                  subtitle: 'Dynamic Sleep Gating',
-                  icon: Icons.eco_rounded,
-                  code: 0,
-                  isSelected: powerPolicyCode == 0,
-                  selectedAccent: const Color(0xFF67C2FF),
-                  onSelect: onSelectPowerPolicy,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildPolicySegment(
-                  isDark: isDark,
-                  colors: colors,
-                  label: 'Always On',
-                  subtitle: '0 Latency · No Sleep',
-                  icon: Icons.bolt_rounded,
-                  code: 1,
-                  isSelected: powerPolicyCode == 1,
-                  selectedAccent: const Color(0xFFFF5252),
-                  onSelect: onSelectPowerPolicy,
-                ),
-              ),
-            ],
-          ),
-
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(height: 1),
-          ),
-
-          // Devfreq Governor Selector
-          Text(
-            'DEVFREQ GOVERNOR',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.6,
-              color: colors.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 10),
-          LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              final double halfWidth = (constraints.maxWidth - 8) / 2;
-              return Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: <Widget>[
-                  SizedBox(
-                    width: halfWidth,
-                    child: _buildGovSegment(
-                      isDark: isDark,
-                      colors: colors,
-                      label: 'On-Demand',
-                      subtitle: 'Load-responsive scaling',
-                      icon: Icons.speed_rounded,
-                      selectedAccent: const Color(0xFFFFB84D),
-                      code: 0,
-                      isSelected: govCode == 0,
-                      onSelect: onSelectGov,
-                    ),
-                  ),
-                  SizedBox(
-                    width: halfWidth,
-                    child: _buildGovSegment(
-                      isDark: isDark,
-                      colors: colors,
-                      label: 'Performance',
-                      subtitle: 'Maximum-clock priority',
-                      icon: Icons.bolt_rounded,
-                      selectedAccent: const Color(0xFFFF5252),
-                      code: 1,
-                      isSelected: govCode == 1,
-                      onSelect: onSelectGov,
-                    ),
-                  ),
-                  SizedBox(
-                    width: halfWidth,
-                    child: _buildGovSegment(
-                      isDark: isDark,
-                      colors: colors,
-                      label: 'Powersave',
-                      subtitle: 'Lowest-clock priority',
-                      icon: Icons.eco_rounded,
-                      selectedAccent: const Color(0xFF41C98A),
-                      code: 2,
-                      isSelected: govCode == 2,
-                      onSelect: onSelectGov,
-                    ),
-                  ),
-                  SizedBox(
-                    width: halfWidth,
-                    child: _buildGovSegment(
-                      isDark: isDark,
-                      colors: colors,
-                      label: 'Userspace',
-                      subtitle: 'Manual frequency control',
-                      icon: Icons.tune_rounded,
-                      selectedAccent: const Color(0xFFA78BFA),
-                      code: 3,
-                      isSelected: govCode == 3,
-                      onSelect: onSelectGov,
-                    ),
-                  ),
-                  SizedBox(
-                    width: constraints.maxWidth,
-                    child: _buildGovSegment(
-                      isDark: isDark,
-                      colors: colors,
-                      label: 'OEM Stock',
-                      subtitle: 'Vendor default governor behavior',
-                      icon: Icons.memory_rounded,
-                      selectedAccent: const Color(0xFF67C2FF),
-                      code: 4,
-                      isSelected: govCode == 4,
-                      onSelect: onSelectGov,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPolicySegment({
-    required bool isDark,
-    required ColorScheme colors,
-    required String label,
-    required String subtitle,
-    required IconData icon,
-    required int code,
-    required bool isSelected,
-    required Color selectedAccent,
-    required ValueChanged<int> onSelect,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => onSelect(code),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? selectedAccent.withValues(alpha: 0.12)
-                : (isDark
-                      ? Colors.white.withValues(alpha: 0.04)
-                      : Colors.black.withValues(alpha: 0.03)),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected ? selectedAccent : Colors.transparent,
-              width: 1.2,
-            ),
-          ),
-          child: Row(
-            children: <Widget>[
-              Icon(
-                icon,
-                size: 16,
-                color: isSelected ? selectedAccent : colors.onSurfaceVariant,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: isSelected
-                            ? FontWeight.w800
-                            : FontWeight.w600,
-                        color: isSelected ? selectedAccent : colors.onSurface,
-                      ),
-                    ),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 9.5,
-                        color: colors.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGovSegment({
-    required bool isDark,
-    required ColorScheme colors,
-    required String label,
-    required String subtitle,
-    required IconData icon,
-    required Color selectedAccent,
-    required int code,
-    required bool isSelected,
-    required ValueChanged<int> onSelect,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => onSelect(code),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 64),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? selectedAccent.withValues(alpha: 0.14)
-                : (isDark
-                      ? Colors.white.withValues(alpha: 0.04)
-                      : Colors.black.withValues(alpha: 0.03)),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected
-                  ? selectedAccent
-                  : (isDark
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : Colors.black.withValues(alpha: 0.04)),
-              width: isSelected ? 1.4 : 1,
-            ),
-          ),
-          child: Row(
-            children: <Widget>[
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: selectedAccent.withValues(
-                    alpha: isSelected ? 0.18 : 0.08,
-                  ),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Icon(
-                  icon,
-                  size: 17,
-                  color: isSelected ? selectedAccent : colors.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: isSelected
-                            ? FontWeight.w800
-                            : FontWeight.w700,
-                        color: isSelected ? selectedAccent : colors.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
-                      subtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 9,
-                        height: 1.15,
-                        color: colors.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+    return const SurfaceCard(
+      child: _InfoBlock(
+        title: 'KGSL · msm-adreno-tz',
+        text: 'The kernel manages GPU DVFS. Profiles set validated frequency bounds. GED and Mali power policies are unavailable on this device.',
       ),
     );
   }
@@ -13125,7 +12738,7 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                'MediaTek Mali Architecture',
+                'Qualcomm Adreno Architecture',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
@@ -13135,20 +12748,16 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          _buildDetailRow(
-            colors,
-            'GPU Architecture',
-            'Mali-G720 7-Core r0p1 (0x0C080700)',
-          ),
+          _buildDetailRow(colors, 'GPU Architecture', 'Adreno 825'),
           _buildDetailRow(
             colors,
             'Active Core Mask',
-            '0x150055 (All 7 execution clusters active)',
+            'Not exposed by this backend',
           ),
           _buildDetailRow(
             colors,
             'Thermal Cooling Node',
-            '/sys/class/thermal/cooling_device3',
+            'Kernel / vendor managed',
           ),
           _buildDetailRow(
             colors,
@@ -13159,15 +12768,11 @@ class _MaliGpuScreenState extends State<MaliGpuScreen> {
                       ? '0 (Rodin Essential unrestricted override)'
                       : '$thermalState (vendor managed)'),
           ),
-          _buildDetailRow(
-            colors,
-            'GED Boost Subsystem',
-            '/sys/module/ged/parameters/',
-          ),
+          _buildDetailRow(colors, 'GPU Driver', 'Qualcomm KGSL'),
           _buildDetailRow(
             colors,
             'Hardware Frequencies',
-            '41 Clock Steps (260 MHz → 1.30 GHz)',
+            '11 Clock Steps (264 MHz → 1.15 GHz)',
           ),
         ],
       ),
@@ -14982,9 +14587,8 @@ class LiveDashboardHero extends StatelessWidget {
                                 boxShadow: ready
                                     ? <BoxShadow>[
                                         BoxShadow(
-                                          color: const Color(
-                                            0xFF41C98A,
-                                          ).withValues(alpha: 0.7),
+                                          color: const Color(0xFF41C98A)
+                                              .withValues(alpha: 0.7),
                                           blurRadius: 6,
                                         ),
                                       ]
@@ -15666,9 +15270,7 @@ class SurfaceCard extends StatelessWidget {
         // Minimal Slate
         color: dark ? const Color(0xFF101419) : const Color(0xFFF0F4F8),
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(
-          color: RodinSurfaceLines.border(colors),
-        ),
+        border: Border.all(color: RodinSurfaceLines.border(colors)),
         boxShadow: dark
             ? const <BoxShadow>[]
             : const <BoxShadow>[
@@ -15690,9 +15292,7 @@ class SurfaceCard extends StatelessWidget {
                 colors: <Color>[Color(0xFFFFFFFF), Color(0xFFF7FAFE)],
               ),
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(
-          color: RodinSurfaceLines.border(colors),
-        ),
+        border: Border.all(color: RodinSurfaceLines.border(colors)),
         boxShadow: dark
             ? const <BoxShadow>[]
             : const <BoxShadow>[
@@ -15879,9 +15479,8 @@ class SectionLabel extends StatelessWidget {
           fontSize: 10.5,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.82,
-          color: Theme.of(
-            context,
-          ).colorScheme.onSurfaceVariant.withValues(alpha: 0.78),
+          color: Theme.of(context).colorScheme.onSurfaceVariant
+              .withValues(alpha: 0.78),
         ),
       ),
     );

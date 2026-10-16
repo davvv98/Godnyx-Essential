@@ -1,7 +1,7 @@
 #!/system/bin/sh
 
 MODDIR=${0%/*}
-RODIN_ROOT=/data/adb/rodin-essential
+RODIN_ROOT=/data/adb/onyx-essential
 RODIN_NATIVE_STATE_ROOT=/data/system/rodin-essential
 RODIN_DAEMON="$MODDIR/bin/rodin_daemon"
 RODIN_LOG="$RODIN_ROOT/backend.log"

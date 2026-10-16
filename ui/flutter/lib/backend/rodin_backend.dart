@@ -13,10 +13,12 @@ typedef _BackendGetDart = int Function(int);
 typedef _BackendSetNative = ffi.Int32 Function(ffi.Int32, ffi.Int32, ffi.Int32);
 typedef _BackendSetDart = int Function(int, int, int);
 typedef _BackEventNative = ffi.Void Function(ffi.Int32);
-typedef _BackListenerNative =
-    ffi.Void Function(ffi.Pointer<ffi.NativeFunction<_BackEventNative>>);
-typedef _BackListenerDart =
-    void Function(ffi.Pointer<ffi.NativeFunction<_BackEventNative>>);
+typedef _BackListenerNative = ffi.Void Function(
+  ffi.Pointer<ffi.NativeFunction<_BackEventNative>>,
+);
+typedef _BackListenerDart = void Function(
+  ffi.Pointer<ffi.NativeFunction<_BackEventNative>>,
+);
 
 final class RodinBackendSnapshot {
   const RodinBackendSnapshot({
@@ -36,7 +38,8 @@ final class RodinBackendSnapshot {
     required this.cpuOnlineMask,
     required this.cpuFreqKhz,
     required this.cpuGovernor0,
-    required this.cpuGovernor4,
+    required this.cpuGovernor2,
+    required this.cpuGovernor5,
     required this.cpuGovernor7,
     required this.gpuGovernor,
     required this.ufsScheduler,
@@ -73,7 +76,8 @@ final class RodinBackendSnapshot {
   final int cpuOnlineMask;
   final List<int> cpuFreqKhz;
   final int cpuGovernor0;
-  final int cpuGovernor4;
+  final int cpuGovernor2;
+  final int cpuGovernor5;
   final int cpuGovernor7;
   final int gpuGovernor;
   final int ufsScheduler;
@@ -204,7 +208,8 @@ final class RodinBackend {
     cpuOnlineMask: 0,
     cpuFreqKhz: <int>[-1, -1, -1, -1, -1, -1, -1, -1],
     cpuGovernor0: -1,
-    cpuGovernor4: -1,
+    cpuGovernor2: -1,
+    cpuGovernor5: -1,
     cpuGovernor7: -1,
     gpuGovernor: -1,
     ufsScheduler: -1,
@@ -483,7 +488,8 @@ final class RodinBackend {
       cpuOnlineMask: _cpuOnlineMaskNative(),
       cpuFreqKhz: List<int>.generate(8, _cpuFreqNative, growable: false),
       cpuGovernor0: _cpuGovernorNative(0),
-      cpuGovernor4: _cpuGovernorNative(4),
+      cpuGovernor2: _cpuGovernorNative(2),
+      cpuGovernor5: _cpuGovernorNative(5),
       cpuGovernor7: _cpuGovernorNative(7),
       gpuGovernor: _gpuGovernorNative(),
       ufsScheduler: _ufsSchedulerNative(),
@@ -574,7 +580,8 @@ final class RodinBackend {
         cpuOnlineMask: _latest.cpuOnlineMask,
         cpuFreqKhz: _latest.cpuFreqKhz,
         cpuGovernor0: _latest.cpuGovernor0,
-        cpuGovernor4: _latest.cpuGovernor4,
+        cpuGovernor2: _latest.cpuGovernor2,
+        cpuGovernor5: _latest.cpuGovernor5,
         cpuGovernor7: _latest.cpuGovernor7,
         gpuGovernor: switch (profile) {
           0 => 0, // OEM dummy
@@ -771,7 +778,9 @@ final class RodinBackend {
   bool resetCpuClusterFreqRange(int policy) => setExtendedOperation(23, policy);
 
   List<int> cpuAvailableFrequencies(int policy) {
-    if (!_started || _lib == null || !const <int>{0, 4, 7}.contains(policy)) {
+    if (!_started ||
+        _lib == null ||
+        !const <int>{0, 2, 5, 7}.contains(policy)) {
       return const <int>[];
     }
 
@@ -791,36 +800,41 @@ final class RodinBackend {
 
   int cpuTargetMinFrequency(int policy) => switch (policy) {
     0 => extendedValue(53),
-    4 => extendedValue(55),
+    2 => extendedValue(55),
     7 => extendedValue(57),
+    5 => extendedValue(122),
     _ => -1,
   };
 
   int cpuTargetMaxFrequency(int policy) => switch (policy) {
     0 => extendedValue(54),
-    4 => extendedValue(56),
+    2 => extendedValue(56),
     7 => extendedValue(58),
+    5 => extendedValue(123),
     _ => -1,
   };
 
   int cpuLiveMinFrequency(int policy) => switch (policy) {
     0 => extendedValue(68),
-    4 => extendedValue(70),
+    2 => extendedValue(70),
     7 => extendedValue(72),
+    5 => extendedValue(124),
     _ => -1,
   };
 
   int cpuLiveMaxFrequency(int policy) => switch (policy) {
     0 => extendedValue(69),
-    4 => extendedValue(71),
+    2 => extendedValue(71),
     7 => extendedValue(73),
+    5 => extendedValue(125),
     _ => -1,
   };
 
   int cpuFrequencyDrift(int policy) => switch (policy) {
     0 => extendedValue(75),
-    4 => extendedValue(76),
+    2 => extendedValue(76),
     7 => extendedValue(77),
+    5 => extendedValue(126),
     _ => -1,
   };
 

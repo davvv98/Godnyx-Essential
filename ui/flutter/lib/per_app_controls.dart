@@ -1047,15 +1047,10 @@ class _PerAppEditorState extends State<_PerAppEditor> {
                 accent: Color(0xFF4CC79E),
               ),
               const SizedBox(height: 14),
-              _choice(
-                'Touch response',
-                _draft['touch'],
-                <String, String>{
-                  for (final int v in _numbers('touch'))
-                    '$v': v == 0 ? 'OEM adaptive' : _rodinTouchLabel(v),
-                },
-                (String? v) => _set('touch', v == null ? null : int.parse(v)),
-              ),
+              _choice('Touch response', _draft['touch'], <String, String>{
+                for (final int v in _numbers('touch'))
+                  '$v': v == 0 ? 'OEM adaptive' : _rodinTouchLabel(v),
+              }, (String? v) => _set('touch', v == null ? null : int.parse(v))),
               _choice(
                 'Refresh rate',
                 _draft['refresh'],
@@ -1082,20 +1077,15 @@ class _PerAppEditorState extends State<_PerAppEditor> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               const _PerAppSectionTitle(
-                title: 'Mali GPU',
+                title: 'Adreno GPU',
                 icon: Icons.sports_esports_rounded,
                 accent: Color(0xFFFF5252),
               ),
               const SizedBox(height: 14),
-              _choice(
-                'GPU profile',
-                _draft['gpu'],
-                <String, String>{
-                  for (final int v in _numbers('gpu'))
-                    '$v': _rodinPerformanceLabel(v),
-                },
-                (String? v) => _set('gpu', v == null ? null : int.parse(v)),
-              ),
+              _choice('GPU profile', _draft['gpu'], <String, String>{
+                for (final int v in _numbers('gpu'))
+                  '$v': _rodinPerformanceLabel(v),
+              }, (String? v) => _set('gpu', v == null ? null : int.parse(v))),
               const Text(
                 'Changes GPU controls only.',
                 style: TextStyle(fontSize: 11, height: 1.4),
@@ -1104,7 +1094,7 @@ class _PerAppEditorState extends State<_PerAppEditor> {
           ),
         ),
         const SizedBox(height: 14),
-        for (final int policy in <int>[0, 4, 7]) _cluster(policy, colors),
+        for (final int policy in <int>[0, 2, 5, 7]) _cluster(policy, colors),
         if (widget.capabilities['cores'] == true)
           SurfaceCard(
             child: Column(
@@ -1198,7 +1188,7 @@ class _PerAppEditorState extends State<_PerAppEditor> {
     final List<dynamic>? range = _cpu(policy)['range'] as List?;
     final String name = policy == 0
         ? 'Efficiency cluster'
-        : policy == 4
+        : policy == 2 || policy == 5
         ? 'Performance cluster'
         : 'Prime core';
     return Padding(
@@ -1266,16 +1256,10 @@ class _PerAppEditorState extends State<_PerAppEditor> {
               ),
               const SizedBox(height: 14),
             ],
-            _choice(
-              'Governor',
-              _cpu(policy)['governor'],
-              <String, String>{
-                for (final dynamic v
-                    in caps['governors'] as List? ?? <dynamic>[])
-                  '$v': '$v',
-              },
-              (String? v) => _cpuSet(policy, 'governor', v),
-            ),
+            _choice('Governor', _cpu(policy)['governor'], <String, String>{
+              for (final dynamic v in caps['governors'] as List? ?? <dynamic>[])
+                '$v': '$v',
+            }, (String? v) => _cpuSet(policy, 'governor', v)),
             const Text(
               'Governor selection is independent of the frequency range.',
               style: TextStyle(fontSize: 12, height: 1.4),

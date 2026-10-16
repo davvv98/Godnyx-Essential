@@ -1,6 +1,6 @@
 id=nees_rodin_essential_backend
-name=Rodin Essential
+name=Onyx Essential (POCO F7)
 version=v1.18.5
 versionCode=11805
 author=NEESCHAL-3
-description=KernelSU Next and Magisk package for Rodin Essential. Keeps the Android app non-root and runs hardware controls through an authenticated root daemon.
+description=KernelSU Next and Magisk package for POCO F7 Onyx. Qualcomm KGSL backend; Xiaomi DisplayFeature. Keeps the Android app non-root and runs hardware controls through an authenticated root daemon.

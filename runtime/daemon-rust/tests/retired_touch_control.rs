@@ -5,7 +5,16 @@ use std::fs;
 
 #[test]
 fn removed_wake_control_is_not_restored_reported_or_saved_after_upgrade() {
-    let dir = std::env::temp_dir().join(format!("rodin-retired-touch-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(
+        format!("rodin-retired-touch-{}", std::process::id())
+            + &format!(
+                "-{}",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ),
+    );
     fs::create_dir(&dir).unwrap();
     fs::write(
         dir.join("state.conf"),

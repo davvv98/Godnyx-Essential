@@ -21,7 +21,7 @@ RODIN_TEST_BOOT_ID="$RODIN_TEST_ROOT/boot_id"
 mkdir -p "$RODIN_TEST_MODULE" "$RODIN_TEST_STATE/watchdog.lock"
 
 sed \
-    -e "s|RODIN_ROOT=/data/adb/rodin-essential|RODIN_ROOT=$RODIN_TEST_STATE|" \
+    -e "s|RODIN_ROOT=/data/adb/onyx-essential|RODIN_ROOT=$RODIN_TEST_STATE|" \
     -e "s|/proc/sys/kernel/random/boot_id|$RODIN_TEST_BOOT_ID|" \
     "$RODIN_SERVICE_SOURCE" >"$RODIN_TEST_MODULE/service.sh"
 chmod 0755 "$RODIN_TEST_MODULE/service.sh"

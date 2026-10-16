@@ -1,3 +1,5 @@
+> POCO F7 adaptation: see [README_ONYX.md](README_ONYX.md) for current status and limitations. The historical Rodin feature descriptions below are not a support claim for Onyx.
+
 # Onyx Essential
 
 Rodin Essential is a native hardware-control application for Xiaomi Rodin

@@ -1,7 +1,7 @@
 #!/system/bin/sh
 
 ui_print "***************************************"
-ui_print "           Rodin Essential"
+ui_print "           Onyx Essential"
 ui_print "      KernelSU Next / Magisk"
 ui_print "***************************************"
 
@@ -20,19 +20,19 @@ if [ "$BOOTMODE" != "true" ]; then
 fi
 
 if [ "$ARCH" != "arm64" ]; then
-    abort "! Rodin Essential requires an arm64 device"
+    abort "! Onyx Essential requires an arm64 device"
 fi
 
 RODIN_PRODUCT="$(getprop ro.product.device)"
 RODIN_VENDOR="$(getprop ro.product.vendor.device)"
 case "$RODIN_PRODUCT $RODIN_VENDOR" in
-    *rodin*) ;;
+    *onyx*) ;;
     *) abort "! Unsupported device: $RODIN_PRODUCT / $RODIN_VENDOR" ;;
 esac
 
 [ -f "$MODPATH/bin/rodin_daemon" ] || abort "! Missing Rodin daemon"
 [ -f "$MODPATH/bin/rodin_ctl" ] || abort "! Missing Rodin control client"
-[ -f "$MODPATH/app/RodinEssential.apk" ] || abort "! Missing Rodin Essential APK"
+[ -f "$MODPATH/app/RodinEssential.apk" ] || abort "! Missing Onyx Essential APK"
 [ -x /system/bin/pm ] || abort "! Android package manager is unavailable"
 
 RODIN_PACKAGE=io.github.neeschal.rodinessential
@@ -97,7 +97,7 @@ case "$RODIN_INSTALL_RESULT" in
             ui_print "! Update that ROM build with its original signing key"
             abort "! Android correctly refused a cross-signature system-app update"
         else
-            ui_print "- Legacy Rodin Essential signing certificate detected"
+            ui_print "- Legacy Onyx Essential signing certificate detected"
             ui_print "- Performing the one-time application signing migration"
             ui_print "- Hardware profiles under /data/adb remain unchanged"
 
@@ -130,7 +130,7 @@ case "$RODIN_INSTALL_RESULT" in
 esac
 
 /system/bin/pm path "$RODIN_PACKAGE" >/dev/null 2>&1 || \
-    abort "! Android did not register Rodin Essential"
+    abort "! Android did not register Onyx Essential"
 
 RODIN_EXPECTED_VERSION_CODE="$(sed -n 's/^versionCode=//p' "$MODPATH/module.prop" | head -n 1)"
 RODIN_INSTALLED_VERSION_CODE="$(/system/bin/dumpsys package "$RODIN_PACKAGE" 2>/dev/null \

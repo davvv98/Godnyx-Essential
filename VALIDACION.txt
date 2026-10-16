@@ -1,0 +1,6 @@
+Android ARM64 cargo check: daemon + host PASS (27 advertencias de código legado sin uso).
+Daemon cargo test: 96 unitarias + 2 integraciones PASS.
+Dart format: 3 archivos analizados sintácticamente PASS.
+Contratos módulo, versión y watchdog: PASS.
+Flutter analyze: BLOQUEADO por revisión automática; no se reintentó.
+APK/NDK enlace final/dispositivo: NO PROBADOS.

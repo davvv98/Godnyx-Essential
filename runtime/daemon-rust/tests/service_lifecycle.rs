@@ -19,7 +19,16 @@ fn service_lifecycle_survives_process_restart() {
         }
         return;
     }
-    let dir = std::env::temp_dir().join(format!("rodin-service-test-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(
+        format!("rodin-service-test-{}", std::process::id())
+            + &format!(
+                "-{}",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ),
+    );
     fs::create_dir(&dir).unwrap();
     // This test executable has one test, with no concurrent environment access.
     unsafe {
@@ -50,14 +59,17 @@ fn service_lifecycle_survives_process_restart() {
     for field in ["touch=-1", "display_color=-1", "display_temp=-1"] {
         assert!(oem.split(';').any(|value| value == field), "{oem}");
     }
-    // This is a non-Android test executable: no GPU driver exists. The
-    // attempted selection still populates the applied-selection cache, which
-    // Reset must invalidate even when the hardware apply could not verify.
-    let _ = handle_command("SET perf 2");
+    // Missing KGSL must not publish a successfully applied profile.
+    let before = handle_command("GET snapshot")
+        .split(';')
+        .find(|v| v.starts_with("perf="))
+        .unwrap()
+        .to_string();
+    assert!(handle_command("SET perf 2").starts_with("ERR "));
     assert!(
         handle_command("GET snapshot")
             .split(';')
-            .any(|v| v == "perf=2")
+            .any(|v| v == before)
     );
     assert_eq!(handle_command("ACTION service.reset"), "OK applied");
     let snapshot = handle_command("GET snapshot");
@@ -93,7 +105,8 @@ fn service_lifecycle_survives_process_restart() {
         "cpu_min_freq0=-1",
         "cpu_max_freq0=-1",
         "cpu0=",
-        "cpu4=",
+        "cpu2=",
+        "cpu5=",
         "cpu7=",
         "io=",
         "bypass_charging=0",
