@@ -1,7 +1,7 @@
-# Rodin Essential
+# Onyx Essential
 
 Rodin Essential is a native hardware-control application for Xiaomi Rodin
-(POCO X7 Pro / Redmi Turbo 4) and its MediaTek Dimensity 8400-Ultra platform.
+(POCO F7 / Redmi Turbo 4 pro ) and its Snapdragon 8s Gen 4 platform.
 It combines an Android `NativeActivity`, a Flutter AOT interface, a Rust host
 runtime, and a separately privileged Rust daemon. The UI and hardware-control
 logic remain native/AOT. A small, framework-only DEX adapter provides the
@@ -15,10 +15,11 @@ installed application UID.
 
 ## Supported target
 
-- Device codename: `rodin`
-- SoC: MediaTek MT6899 / Dimensity 8400-Ultra
-- CPU: 8× Cortex-A725 (4+3+1 policies), up to 3.25 GHz
-- GPU: Mali-G720, 7 cores, up to 1300 MHz
+- Device codename: `onyx`
+- SoC: Qualcomm / Snapdragon 8s Gen 4
+- CPU: 7× Cortex-A720
+- 1x Cortex X-4 (4+3+1 policies), up to 3.25 GHz
+- GPU: Adreno 825, 8 cores, up to 1150 MHz
 - ABI: ARM64
 - Android: API 31 or newer
 - Kernel userspace: 16 KB page-compatible native binaries
