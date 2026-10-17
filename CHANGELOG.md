@@ -9,6 +9,8 @@ the delivered source and does not imply that a release has already been publishe
   remove explicitly renamed legacy files before compilation.
 - Replace touch choices with OEM (125 Hz observed), game mode (250 Hz observed)
   and disabled 480 Hz pending adaptation. Remove the 1000 Hz option.
+- Enter expert color mode through feature 26, match the vendor Binder flag,
+  validate expert channel ranges and verify calibration through decoded HAL dumps.
 - Add Qualcomm KGSL telemetry and profiles based on real OPPs.
 - Support CPU policies 0/2/5/7 with exact frequency conversion to kHz.
 - Separate saved requests from effective bounds; retain IO and invalid-read errors.

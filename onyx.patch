@@ -265,10 +265,10 @@ index 0000000..2c50952
 @@ -0,0 +1 @@
 +d2ac2fcdb35943088258e9bd30dbb0e2266203c2
 diff --git a/CHANGELOG.md b/CHANGELOG.md
-index 273b28c..be6555d 100644
+index 273b28c..e98a232 100644
 --- a/CHANGELOG.md
 +++ b/CHANGELOG.md
-@@ -1,293 +1,36 @@
+@@ -1,293 +1,38 @@
 -# Changelog
 -
 -All notable changes are documented here.
@@ -570,6 +570,8 @@ index 273b28c..be6555d 100644
 +  remove explicitly renamed legacy files before compilation.
 +- Replace touch choices with OEM (125 Hz observed), game mode (250 Hz observed)
 +  and disabled 480 Hz pending adaptation. Remove the 1000 Hz option.
++- Enter expert color mode through feature 26, match the vendor Binder flag,
++  validate expert channel ranges and verify calibration through decoded HAL dumps.
 +- Add Qualcomm KGSL telemetry and profiles based on real OPPs.
 +- Support CPU policies 0/2/5/7 with exact frequency conversion to kHz.
 +- Separate saved requests from effective bounds; retain IO and invalid-read errors.
@@ -770,7 +772,7 @@ index 0000000..57fdb8a
 +Original project and dependency authors retain credit for their work.
 +See LICENSE and the notices in the source code.
 diff --git a/README.md b/README.md
-index 0095321..a6f8495 100644
+index 0095321..bb9760d 100644
 --- a/README.md
 +++ b/README.md
 @@ -1,280 +1,102 @@
@@ -1142,7 +1144,7 @@ index 0095321..a6f8495 100644
 +
 +## Validation
 +
-+This revision has passed 104 daemon unit tests and the daemon integration suite,
++This revision has passed 107 daemon unit tests and the daemon integration suite,
 +Android ARM64 Rust checks for the host and daemon, contract checks, Dart syntax,
 +XML and package/JNI consistency checks. The latest identity and Sconfig panel
 +still require a full APK build and visual validation on the device.
@@ -36645,10 +36647,10 @@ index babc838..e1843f6 100644
 +Unpacked-ROM modification tools do not replace device testing. Native integration
 +and SELinux validation remain pending; see [ROM_INTEGRATION.md](ROM_INTEGRATION.md).
 diff --git a/docs/SYSTEM_COLORS.md b/docs/SYSTEM_COLORS.md
-index e60654a..1517afc 100644
+index e60654a..87b6bd8 100644
 --- a/docs/SYSTEM_COLORS.md
 +++ b/docs/SYSTEM_COLORS.md
-@@ -1,205 +1,14 @@
+@@ -1,205 +1,32 @@
 -# System Colors
 +# System colors and display
  
@@ -36698,7 +36700,9 @@ index e60654a..1517afc 100644
 -Slider haptics are sparse and rate-limited. A completed slider edit is flushed
 -when leaving the screen if the native service is idle; unfinished drags are
 -not submitted by screen disposal.
--
++For diagnostics, attempt the change and inspect the snapshot and OnyxEssential
++logs. Distinguish Android interface palette changes from panel image calibration.
+ 
 -Preview generation runs in one on-demand Dart isolate, separate from input and
 -painting. A bounded cache avoids repeated work, and rapid changes replace the
 -pending preview with the latest selection instead of building a job backlog.
@@ -36706,20 +36710,30 @@ index e60654a..1517afc 100644
 -controls are shown only in Custom mode; Wallpaper has its own guidance.
 -The system's overlay update and its verified readback remain
 -asynchronous and can finish after the selected swatch is visible.
--
++## Onyx expert calibration
+ 
 -Some HyperOS builds create a display-wide transition snapshot for palette
 -overlay changes. While it covers the screen, Android can reject touches as
 -obscured. This is a system transition, not a disabled Rodin control. Grouping
 -slider edits reduces interruptions but does not promise zero-latency global
 -theme changes. Rodin does not disable obscured-touch protection, change system
 -animation scales, or patch the ROM to conceal this limitation.
--
++The device test confirmed a visible cooler tint with feature 26, gamut value 2
++(cookie 0), followed by red value 200 (cookie 1). Original PRO now enters expert
++mode using feature 26 instead of selecting the separate Standard color case.
+ 
 -Compatible apps must use dynamic colors. A fixed keyboard or OEM theme, or an
 -app with its own colors, can ignore the system palette. Very dark or
 -low-chroma seeds may produce Android's fallback color; use Monochrome for a
 -grayscale palette where supported. The preview is illustrative because the
 -installed Android version and OEM implementation determine the final tones.
--
++The AIDL client uses transaction 7, four integers and the vendor transaction
++flag. Expert activation, gamut and channel changes verify Enable and the requested
++value against the Xiaomi diagnostic dump before saving the selection. The dump
++uses MIDISP encoding with a stream-wide position, including newline positions.
++Readback confirms HAL state, not physical color accuracy. HDR and other vendor
++states can still prevent a request from taking effect; mismatches remain errors.
+ 
 -## Platform support
 -
 -Android 12 introduced five native tonal families with thirteen values per family.
@@ -36862,8 +36876,10 @@ index e60654a..1517afc 100644
 -client connects in parallel with startup; an unchecked connection is displayed
 -as Connecting, not Offline or a fabricated Live status.
 -Policy contract checks do not replace testing an enforcing production ROM.
-+For diagnostics, attempt the change and inspect the snapshot and OnyxEssential
-+logs. Distinguish Android interface palette changes from panel image calibration.
++Expert ranges follow the supplied hardware implementation: RGB 50–255, hue
++-180–180, saturation -50–50, value -255–255, contrast -100–100 and gamma 170–270.
++Vivid, Saturated and temperature presets still require individual device tests;
++the RGB test does not establish that every display effect works.
 diff --git a/docs/UNPACKED_ROM_INTEGRATION.md b/docs/UNPACKED_ROM_INTEGRATION.md
 index aaae7ad..614f7d8 100644
 --- a/docs/UNPACKED_ROM_INTEGRATION.md
@@ -37914,18 +37930,128 @@ index 6628d17..5279511 100644
          if current < -100_000 {
              return 7;
          }
+diff --git a/runtime/daemon-rust/src/display_readback.rs b/runtime/daemon-rust/src/display_readback.rs
+new file mode 100644
+index 0000000..8bd2a1f
+--- /dev/null
++++ b/runtime/daemon-rust/src/display_readback.rs
+@@ -0,0 +1,103 @@
++//! Xiaomi DisplayFeature diagnostic decoding. This is HAL state, not a
++//! measurement of panel output or color accuracy.
++const KEY: &[u8; 6] = b"MIDISP";
++
++pub(super) fn decode(raw: &[u8]) -> Result<String, String> {
++    if raw.starts_with(b"DF Param :") {
++        return String::from_utf8(raw.to_vec()).map_err(|e| e.to_string());
++    }
++    let mut decoded = Vec::with_capacity(raw.len());
++    for (i, &c) in raw.iter().enumerate() {
++        if c == b'\n' {
++            decoded.push(c);
++            continue;
++        }
++        if !(32..=126).contains(&c) {
++            return Err("invalid display dump encoding".into());
++        }
++        let delta = if i % 2 == 0 {
++            KEY[i % 6] as i32
++        } else {
++            -(KEY[i % 6] as i32)
++        };
++        decoded.push(((c as i32 - 32 + delta).rem_euclid(95) + 32) as u8);
++    }
++    let text = String::from_utf8(decoded).map_err(|e| e.to_string())?;
++    if !text.starts_with("DF Param :") {
++        return Err("unrecognized display dump".into());
++    }
++    Ok(text)
++}
++
++pub(super) fn expert(raw: &[u8]) -> Result<[i32; 10], String> {
++    let text = decode(raw)?;
++    let section = text
++        .split_once("\nExpert:\n")
++        .ok_or("missing expert readback")?
++        .1;
++    let line = section.lines().next().ok_or("missing expert values")?;
++    let mut tokens = line.split_whitespace();
++    let mut values = [0; 10];
++    for (i, name) in [
++        "Enable:",
++        "Gamut:",
++        "R:",
++        "G:",
++        "B:",
++        "H:",
++        "S:",
++        "V:",
++        "Contrast:",
++        "Gamma:",
++    ]
++    .iter()
++    .enumerate()
++    {
++        if tokens.next() != Some(*name) {
++            return Err("invalid expert readback fields".into());
++        }
++        values[i] = tokens
++            .next()
++            .ok_or("missing expert value")?
++            .parse()
++            .map_err(|_| "invalid expert value")?;
++    }
++    Ok(values)
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    #[test]
++    fn decodes_device_header() {
++        assert_eq!(decode(b"V0;:mcsW;$\n").unwrap(), "DF Param :\n");
++    }
++    #[test]
++    fn decodes_entire_stream_without_resetting_at_newlines() {
++        let plain = b"DF Param :\n\nExpert:\nEnable: 1  Gamut: 2  R: 200  G: 255  B: 255  H: 0  S: 0  V: 0  Contrast: 50  Gamma: 262\n";
++        let encoded: Vec<u8> = plain
++            .iter()
++            .enumerate()
++            .map(|(i, &c)| {
++                if c == b'\n' {
++                    return c;
++                }
++                let delta = if i % 2 == 0 {
++                    -(KEY[i % 6] as i32)
++                } else {
++                    KEY[i % 6] as i32
++                };
++                ((c as i32 - 32 + delta).rem_euclid(95) + 32) as u8
++            })
++            .collect();
++        assert_eq!(
++            expert(&encoded).unwrap(),
++            [1, 2, 200, 255, 255, 0, 0, 0, 50, 262]
++        );
++    }
++    #[test]
++    fn rejects_missing_or_corrupt_values() {
++        assert!(expert(b"DF Param :\nExpert:\nEnable: 1 Gamut: 2 R: 200").is_err());
++        assert!(decode(b"\xff").is_err());
++    }
++}
 diff --git a/runtime/daemon-rust/src/lib.rs b/runtime/daemon-rust/src/lib.rs
-index 8d2b048..9398140 100644
+index 8d2b048..82a03f7 100644
 --- a/runtime/daemon-rust/src/lib.rs
 +++ b/runtime/daemon-rust/src/lib.rs
-@@ -1,3 +1,6 @@
+@@ -1,3 +1,7 @@
++mod display_readback;
 +mod limits;
 +mod onyx;
 +mod sconfig;
  use std::ffi::c_void;
  use std::fs::{self, OpenOptions};
  use std::io::{Read, Seek, SeekFrom, Write};
-@@ -19,9 +22,9 @@ mod subsystem_clocks;
+@@ -19,9 +23,9 @@ mod subsystem_clocks;
  mod system_colors;
  mod touch_resampler;
  
@@ -37938,7 +38064,7 @@ index 8d2b048..9398140 100644
  const LOOPBACK_PORT: u16 = 732;
  
  const AF_UNIX: i32 = 1;
-@@ -297,6 +300,55 @@ mod vendor_binder {
+@@ -297,6 +301,55 @@ mod vendor_binder {
          ok
      }
  
@@ -37994,7 +38120,18 @@ index 8d2b048..9398140 100644
      pub fn set_display_feature(case_id: i32, mode_id: i32, cookie: i32) -> bool {
          const SERVICE: &[u8] =
              b"vendor.xiaomi.hardware.displayfeature_aidl.IDisplayFeature/default\0";
-@@ -350,6 +402,10 @@ mod vendor_binder {
+@@ -316,7 +369,9 @@ mod vendor_binder {
+         }
+ 
+         if ok {
+-            ok &= unsafe { AIBinder_transact(binder, 7, &mut input, &mut output, 0) } == STATUS_OK;
++            ok &= unsafe {
++                AIBinder_transact(binder, 7, &mut input, &mut output, FLAG_PRIVATE_VENDOR)
++            } == STATUS_OK;
+         } else if !input.is_null() {
+             unsafe { AParcel_delete(input) };
+         }
+@@ -350,6 +405,10 @@ mod vendor_binder {
      pub fn display_available() -> bool {
          false
      }
@@ -38005,7 +38142,7 @@ index 8d2b048..9398140 100644
      pub fn set_touch_mode(_: i32, _: i32, _: i32) -> bool {
          false
      }
-@@ -456,8 +512,8 @@ fn package_app_id_from_packages_list(contents: &str, package: &str) -> Option<u3
+@@ -456,8 +515,8 @@ fn package_app_id_from_packages_list(contents: &str, package: &str) -> Option<u3
  }
  
  fn configured_app_uid_policy() -> AppUidPolicy {
@@ -38016,7 +38153,7 @@ index 8d2b048..9398140 100644
              Err(std::env::VarError::NotPresent) => AppUidPolicy::SelinuxOnly,
              Err(std::env::VarError::NotUnicode(_)) => AppUidPolicy::Reject,
              Ok(package) => fs::read_to_string("/data/system/packages.list")
-@@ -608,7 +664,7 @@ fn write_verified(path: &Path, value: &str) -> Result<String, String> {
+@@ -608,7 +667,7 @@ fn write_verified(path: &Path, value: &str) -> Result<String, String> {
      read_trimmed(path)
  }
  
@@ -38025,7 +38162,7 @@ index 8d2b048..9398140 100644
  const BYPASS_CHARGING_PATHS: [&str; 2] = [
      "/sys/class/power_supply/battery/bypass_charging",
      "/sys/class/power_supply/battery/bypass_charge",
-@@ -622,13 +678,7 @@ fn charging_path() -> PathBuf {
+@@ -622,13 +681,7 @@ fn charging_path() -> PathBuf {
  }
  
  fn charging_fcc_path() -> Option<PathBuf> {
@@ -38040,7 +38177,7 @@ index 8d2b048..9398140 100644
  }
  
  fn bypass_charging_path() -> Option<PathBuf> {
-@@ -759,7 +809,7 @@ fn maintain_bypass_policy() {
+@@ -759,7 +812,7 @@ fn maintain_bypass_policy() {
      if let Some(state) = state.filter(|state| state.bypass_charging == 1) {
          if let Err(error) = reconcile_bypass(true, state.bypass_threshold, false) {
              if BYPASS_POLICY_ERROR.swap(1, Ordering::AcqRel) == 0 {
@@ -38049,7 +38186,7 @@ index 8d2b048..9398140 100644
              }
          }
      }
-@@ -812,7 +862,7 @@ fn valid_charging_profile(profile: i32) -> bool {
+@@ -812,7 +865,7 @@ fn valid_charging_profile(profile: i32) -> bool {
  fn normalize_charging_profile(profile: i32) -> i32 {
      match profile {
          // v1.18.x stored the old boost switch as 8. Preserve that intent as
@@ -38058,7 +38195,7 @@ index 8d2b048..9398140 100644
          8 => 90,
          value if valid_charging_profile(value) => value,
          _ => 0,
-@@ -825,7 +875,7 @@ fn charging_profile_fcc_ua(profile: i32) -> Option<i64> {
+@@ -825,7 +878,7 @@ fn charging_profile_fcc_ua(profile: i32) -> Option<i64> {
          33 => Some(8_067_000),
          65 => Some(15_889_000),
          85 => Some(20_778_000),
@@ -38067,7 +38204,7 @@ index 8d2b048..9398140 100644
          _ => None,
      }
  }
-@@ -843,47 +893,10 @@ fn write_charging_if_present(path: &Path, value: &str) -> Result<Option<String>,
+@@ -843,47 +896,10 @@ fn write_charging_if_present(path: &Path, value: &str) -> Result<Option<String>,
  }
  
  fn apply_charging_profile(profile: i32) -> Result<(), String> {
@@ -38116,7 +38253,7 @@ index 8d2b048..9398140 100644
  }
  
  #[cfg(target_os = "android")]
-@@ -980,7 +993,7 @@ fn core_ctl_paths() -> Vec<PathBuf> {
+@@ -980,7 +996,7 @@ fn core_ctl_paths() -> Vec<PathBuf> {
          }
      }
  
@@ -38125,7 +38262,7 @@ index 8d2b048..9398140 100644
          let path = PathBuf::from(format!(
              "/sys/devices/system/cpu/cpufreq/policy{policy}/core_ctl/enable"
          ));
-@@ -1188,7 +1201,7 @@ fn policy_governor(policy: i32) -> String {
+@@ -1188,7 +1204,7 @@ fn policy_governor(policy: i32) -> String {
  }
  
  fn gpu_governor() -> String {
@@ -38134,7 +38271,7 @@ index 8d2b048..9398140 100644
  }
  
  fn scheduler_name(path: &Path) -> Option<String> {
-@@ -1259,13 +1272,14 @@ fn list_contains(path: &str, target: &str) -> bool {
+@@ -1259,13 +1275,14 @@ fn list_contains(path: &str, target: &str) -> bool {
  
  fn set_cpu_governor(policy: i32, governor: &str) -> Result<(), String> {
      const SAFE: &[&str] = &[
@@ -38151,7 +38288,7 @@ index 8d2b048..9398140 100644
          return Err("invalid cpu governor request".into());
      }
      let base = format!("/sys/devices/system/cpu/cpufreq/policy{policy}");
-@@ -1285,19 +1299,15 @@ fn set_cpu_governor(policy: i32, governor: &str) -> Result<(), String> {
+@@ -1285,19 +1302,15 @@ fn set_cpu_governor(policy: i32, governor: &str) -> Result<(), String> {
  }
  
  fn cpu_policy_default_range(policy: i32) -> Option<(i32, i32)> {
@@ -38174,7 +38311,7 @@ index 8d2b048..9398140 100644
          .map(|khz| (khz / 1_000) as i32)
          .collect::<Vec<_>>();
      frequencies.sort_unstable();
-@@ -1310,7 +1320,7 @@ fn parse_cpu_time_in_state(raw: &str) -> Vec<i32> {
+@@ -1310,7 +1323,7 @@ fn parse_cpu_time_in_state(raw: &str) -> Vec<i32> {
          .lines()
          .filter_map(|line| line.split_whitespace().next())
          .filter_map(|value| value.parse::<i64>().ok())
@@ -38183,7 +38320,7 @@ index 8d2b048..9398140 100644
          .map(|khz| (khz / 1_000) as i32)
          .collect::<Vec<_>>();
      frequencies.sort_unstable();
-@@ -1319,7 +1329,7 @@ fn parse_cpu_time_in_state(raw: &str) -> Vec<i32> {
+@@ -1319,7 +1332,7 @@ fn parse_cpu_time_in_state(raw: &str) -> Vec<i32> {
  }
  
  fn cpu_available_frequencies(policy: i32) -> Vec<i32> {
@@ -38192,7 +38329,7 @@ index 8d2b048..9398140 100644
          return Vec::new();
      }
  
-@@ -1339,6 +1349,31 @@ fn cpu_available_frequencies(policy: i32) -> Vec<i32> {
+@@ -1339,6 +1352,31 @@ fn cpu_available_frequencies(policy: i32) -> Vec<i32> {
      .unwrap_or_default()
  }
  
@@ -38224,7 +38361,7 @@ index 8d2b048..9398140 100644
  fn cpu_frequency_table_csv(policy: i32) -> String {
      cpu_available_frequencies(policy)
          .iter()
-@@ -1385,7 +1420,8 @@ fn get_cpu_cluster_live_max_freq(policy: i32) -> i32 {
+@@ -1385,7 +1423,8 @@ fn get_cpu_cluster_live_max_freq(policy: i32) -> i32 {
  fn persisted_cpu_range(state: &PersistedState, policy: i32) -> Option<(i32, i32)> {
      let range = match policy {
          0 => (state.cpu_min_freq0, state.cpu_max_freq0),
@@ -38234,7 +38371,7 @@ index 8d2b048..9398140 100644
          7 => (state.cpu_min_freq7, state.cpu_max_freq7),
          _ => return None,
      };
-@@ -1409,7 +1445,7 @@ fn validate_cpu_frequency_range_against(
+@@ -1409,7 +1448,7 @@ fn validate_cpu_frequency_range_against(
      max_mhz: i32,
      available: &[i32],
  ) -> Result<(), String> {
@@ -38243,7 +38380,7 @@ index 8d2b048..9398140 100644
          return Err("invalid cpu frequency range".into());
      }
      if min_mhz > max_mhz {
-@@ -1464,7 +1500,8 @@ fn mtk_powerhal_cpu_range_request(policy: i32, min_mhz: i32, max_mhz: i32) -> St
+@@ -1464,7 +1503,8 @@ fn mtk_powerhal_cpu_range_request(policy: i32, min_mhz: i32, max_mhz: i32) -> St
  fn persisted_cpu_ranges_active(state: &PersistedState) -> bool {
      [
          (state.cpu_min_freq0, state.cpu_max_freq0),
@@ -38253,7 +38390,7 @@ index 8d2b048..9398140 100644
          (state.cpu_min_freq7, state.cpu_max_freq7),
      ]
      .into_iter()
-@@ -1516,29 +1553,7 @@ fn write_mi_thermal_config_mode(mode: i32) -> Result<(), String> {
+@@ -1516,29 +1556,7 @@ fn write_mi_thermal_config_mode(mode: i32) -> Result<(), String> {
  
  fn ensure_cpu_unrestricted_mode_unlocked() -> Result<(), String> {
      CPU_THERMAL_MODE_ACK.store(-1, Ordering::Release);
@@ -38284,7 +38421,7 @@ index 8d2b048..9398140 100644
  }
  
  fn ensure_cpu_unrestricted_mode() -> Result<(), String> {
-@@ -1549,27 +1564,7 @@ fn ensure_cpu_unrestricted_mode() -> Result<(), String> {
+@@ -1549,27 +1567,7 @@ fn ensure_cpu_unrestricted_mode() -> Result<(), String> {
  }
  
  fn restore_cpu_thermal_mode_unlocked() -> Result<(), String> {
@@ -38313,7 +38450,7 @@ index 8d2b048..9398140 100644
  }
  
  fn restore_cpu_thermal_mode() -> Result<(), String> {
-@@ -1593,72 +1588,38 @@ fn apply_cluster_freq_controls_unlocked(
+@@ -1593,72 +1591,38 @@ fn apply_cluster_freq_controls_unlocked(
      max_mhz: i32,
  ) -> Result<(), String> {
      validate_cpu_frequency_range(policy, min_mhz, max_mhz)?;
@@ -38417,7 +38554,7 @@ index 8d2b048..9398140 100644
  }
  
  fn apply_cluster_freq_controls(policy: i32, min_mhz: i32, max_mhz: i32) -> Result<(), String> {
-@@ -1710,9 +1671,13 @@ fn set_cpu_cluster_freq_range(policy: i32, min_mhz: i32, max_mhz: i32) -> Result
+@@ -1710,9 +1674,13 @@ fn set_cpu_cluster_freq_range(policy: i32, min_mhz: i32, max_mhz: i32) -> Result
                          state.cpu_min_freq0 = min_mhz;
                          state.cpu_max_freq0 = max_mhz;
                      }
@@ -38434,7 +38571,7 @@ index 8d2b048..9398140 100644
                      }
                      7 => {
                          state.cpu_min_freq7 = min_mhz;
-@@ -1730,7 +1695,9 @@ fn set_cpu_cluster_freq_range(policy: i32, min_mhz: i32, max_mhz: i32) -> Result
+@@ -1730,7 +1698,9 @@ fn set_cpu_cluster_freq_range(policy: i32, min_mhz: i32, max_mhz: i32) -> Result
          Err(error) => Err(error),
      };
  
@@ -38445,7 +38582,7 @@ index 8d2b048..9398140 100644
      result
  }
  
-@@ -1764,9 +1731,13 @@ fn reset_cpu_cluster_freq_range(policy: i32) -> Result<(), String> {
+@@ -1764,9 +1734,13 @@ fn reset_cpu_cluster_freq_range(policy: i32) -> Result<(), String> {
                          state.cpu_min_freq0 = -1;
                          state.cpu_max_freq0 = -1;
                      }
@@ -38462,7 +38599,7 @@ index 8d2b048..9398140 100644
                      }
                      7 => {
                          state.cpu_min_freq7 = -1;
-@@ -1794,32 +1765,17 @@ fn reset_cpu_cluster_freq_range(policy: i32) -> Result<(), String> {
+@@ -1794,32 +1768,17 @@ fn reset_cpu_cluster_freq_range(policy: i32) -> Result<(), String> {
          Err(error) => Err(error),
      };
  
@@ -38501,7 +38638,7 @@ index 8d2b048..9398140 100644
  }
  
  fn set_io_scheduler(scheduler: &str) -> Result<(), String> {
-@@ -1868,42 +1824,16 @@ fn write_if_present(path: &str, value: &str) -> Result<bool, String> {
+@@ -1868,42 +1827,16 @@ fn write_if_present(path: &str, value: &str) -> Result<bool, String> {
  }
  
  fn clear_gpu_cooling_cap() {
@@ -38548,7 +38685,7 @@ index 8d2b048..9398140 100644
  }
  
  // Beast must never disable DVFS while the GPU is still running a previous
-@@ -1913,252 +1843,43 @@ fn write_beast_gpu_constraints() {
+@@ -1913,252 +1846,43 @@ fn write_beast_gpu_constraints() {
  // another profile command. Keep DVFS enabled while arming OPP 0, and disable
  // it only after the live GED frequency confirms 1300 MHz.
  fn arm_or_lock_beast_gpu() -> bool {
@@ -38825,7 +38962,7 @@ index 8d2b048..9398140 100644
  }
  
  fn classify_touch_panel_version(version: &str) -> i32 {
-@@ -2230,7 +1951,7 @@ fn read_u16_from_slice(bytes: &[u8], offset: usize) -> Option<u16> {
+@@ -2230,7 +1954,7 @@ fn read_u16_from_slice(bytes: &[u8], offset: usize) -> Option<u16> {
  }
  
  fn find_touch_thp_config_offset(bytes: &[u8]) -> Option<usize> {
@@ -38834,7 +38971,7 @@ index 8d2b048..9398140 100644
      // timing block. Match all three vendor timing pairs instead of relying on
      // one firmware build's absolute virtual address.
      if bytes.len() < 0x38 {
-@@ -2253,53 +1974,7 @@ fn find_touch_thp_config_offset(bytes: &[u8]) -> Option<usize> {
+@@ -2253,53 +1977,7 @@ fn find_touch_thp_config_offset(bytes: &[u8]) -> Option<usize> {
  }
  
  fn locate_touch_thp_layout() -> Result<TouchThpLayout, String> {
@@ -38889,7 +39026,7 @@ index 8d2b048..9398140 100644
  }
  
  fn read_touch_thp_rate(layout: TouchThpLayout, address: u64) -> Result<u16, String> {
-@@ -2319,7 +1994,7 @@ fn read_touch_thp_rate(layout: TouchThpLayout, address: u64) -> Result<u16, Stri
+@@ -2319,7 +1997,7 @@ fn read_touch_thp_rate(layout: TouchThpLayout, address: u64) -> Result<u16, Stri
  
  fn write_touch_thp_rate(rate: u16) -> Result<TouchThpLayout, String> {
      if !matches!(rate, 240 | 480) {
@@ -38898,7 +39035,7 @@ index 8d2b048..9398140 100644
      }
  
      let layout = locate_touch_thp_layout()?;
-@@ -2379,41 +2054,21 @@ fn goodix_report_rate_hz() -> Option<u16> {
+@@ -2379,41 +2057,21 @@ fn goodix_report_rate_hz() -> Option<u16> {
  }
  
  fn touch_profile_is_live(profile: i32) -> bool {
@@ -38943,7 +39080,7 @@ index 8d2b048..9398140 100644
      // mode-2 value 99 is the vendor high-sensitivity latch for the 240 Hz path:
      // the HAL normalizes its public readback to 4, but omitting the latch makes
      // the panel deliver only about 135 Hz while still claiming 240 Hz. The
-@@ -2514,11 +2169,11 @@ fn apply_touch_driver_fallback(profile: i32, panel: i32) -> Result<(), String> {
+@@ -2514,11 +2172,11 @@ fn apply_touch_driver_fallback(profile: i32, panel: i32) -> Result<(), String> {
      }
  
      if panel != 1 {
@@ -38957,7 +39094,7 @@ index 8d2b048..9398140 100644
      }
  
      let value = if profile == 1 { "0" } else { "1" };
-@@ -2541,89 +2196,54 @@ fn apply_touch_driver_fallback(profile: i32, panel: i32) -> Result<(), String> {
+@@ -2541,89 +2199,54 @@ fn apply_touch_driver_fallback(profile: i32, panel: i32) -> Result<(), String> {
      ))
  }
  
@@ -38967,20 +39104,31 @@ index 8d2b048..9398140 100644
 +fn write_onyx_game_mode(value: i32) -> Result<(), String> {
 +    if !vendor_binder::set_touch_mode(0, 0, value) {
 +        return Err("Xiaomi game-mode write failed".into());
-     }
--    if !(1..=3).contains(&profile) {
--        return Err("invalid touch profile".into());
++    }
 +    if vendor_binder::get_touch_mode(0, 0) != Some(value) {
 +        return Err("Xiaomi game-mode readback mismatch".into());
      }
--    let _guard = touch_profile_apply_lock()
--        .lock()
--        .map_err(|_| "touch profile apply lock poisoned".to_string())?;
--    apply_touch_profile_locked(profile)
+-    if !(1..=3).contains(&profile) {
+-        return Err("invalid touch profile".into());
 +    Ok(())
++}
++
++fn restore_onyx_game_mode() -> Result<(), String> {
++    if let Some(value) = service_control::original("touch.game_mode").and_then(|v| v.as_i64()) {
++        write_onyx_game_mode(value as i32)?;
+     }
++    Ok(())
++}
++
++fn set_touch_profile(profile: i32) -> Result<(), String> {
+     let _guard = touch_profile_apply_lock()
+         .lock()
+-        .map_err(|_| "touch profile apply lock poisoned".to_string())?;
++        .map_err(|_| "touch lock poisoned")?;
+     apply_touch_profile_locked(profile)
  }
  
--fn apply_touch_profile_locked(profile: i32) -> Result<(), String> {
+ fn apply_touch_profile_locked(profile: i32) -> Result<(), String> {
 -    service_control::remember("touch.hal", serde_json::json!(true))?;
 -
 -    TOUCH_APPLY_ACK.store(0, Ordering::Release);
@@ -39037,24 +39185,11 @@ index 8d2b048..9398140 100644
 -        apply_touch_driver_fallback(profile, panel)?;
 -        2
 -    };
-+fn restore_onyx_game_mode() -> Result<(), String> {
-+    if let Some(value) = service_control::original("touch.game_mode").and_then(|v| v.as_i64()) {
-+        write_onyx_game_mode(value as i32)?;
-+    }
-+    Ok(())
-+}
- 
+-
 -    let (sustained_rate, instant_rate) = touch_profile_rates(profile);
 -    let _ = service_control::write("/proc/touch_boost/enable", "1");
-+fn set_touch_profile(profile: i32) -> Result<(), String> {
-+    let _guard = touch_profile_apply_lock()
-+        .lock()
-+        .map_err(|_| "touch lock poisoned")?;
-+    apply_touch_profile_locked(profile)
-+}
- 
+-
 -    mutate_persisted_state(|s| s.touch = profile).inspect_err(|_| {
-+fn apply_touch_profile_locked(profile: i32) -> Result<(), String> {
 +    if !matches!(profile, 0 | 1) {
 +        return Err("480 Hz is pending adaptation; resampled touch profiles were removed".into());
 +    }
@@ -39087,7 +39222,7 @@ index 8d2b048..9398140 100644
      TOUCH_APPLY_ACK.store(1, Ordering::Release);
      Ok(())
  }
-@@ -2633,6 +2253,7 @@ fn release_touch_control() -> Result<(), String> {
+@@ -2633,6 +2256,7 @@ fn release_touch_control() -> Result<(), String> {
          .lock()
          .map_err(|_| "touch profile apply lock poisoned")?;
      touch_resampler::set_target_hz(0)?;
@@ -39095,7 +39230,7 @@ index 8d2b048..9398140 100644
      let originals = service_control::originals();
      let mut released = Vec::new();
      if service_control::original("touch.hal").is_some() && vendor_binder::touch_available() {
-@@ -2667,7 +2288,12 @@ fn release_touch_control() -> Result<(), String> {
+@@ -2667,7 +2291,12 @@ fn release_touch_control() -> Result<(), String> {
                  return Err(format!("OEM touch readback mismatch: {key}"));
              }
          }
@@ -39109,7 +39244,47 @@ index 8d2b048..9398140 100644
              released.push(key);
          }
      }
-@@ -2766,8 +2392,8 @@ fn set_display_toggle(case_id: i32, enabled: bool, state: &AtomicI32) -> Result<
+@@ -2704,15 +2333,32 @@ fn apply_display_color_locked(mode: i32) -> Result<(), String> {
+         return Ok(());
+     }
+     service_control::remember("display.hal", serde_json::json!(true))?;
+-    let case_id = match mode {
+-        0 => 2,
+-        1 => 0,
+-        2 => 1,
+-        _ => return Err("invalid display color mode".into()),
++    let request = match mode {
++        // Original PRO must enter expert mode, not the separate Standard case.
++        0 => {
++            let gamut = persisted_state()
++                .lock()
++                .map_err(|_| "state lock poisoned")?
++                .expert_gamut;
++            if !vendor_binder::set_display_feature(26, gamut, 0) {
++                Err("display HAL expert activation failed".to_string())
++            } else {
++                verify_display_expert(0, gamut)
++            }
++        }
++        1 | 2 => {
++            let case_id = if mode == 1 { 0 } else { 1 };
++            if vendor_binder::set_display_feature(case_id, 2, 255) {
++                Ok(())
++            } else {
++                Err("display HAL color transaction failed".to_string())
++            }
++        }
++        _ => Err("invalid display color mode".to_string()),
+     };
+-    if !vendor_binder::set_display_feature(case_id, 2, 255) {
++    if let Err(error) = request {
+         DISPLAY_APPLY_ACK.store(0, Ordering::Release);
+-        return Err("display HAL color transaction failed".into());
++        return Err(error);
+     }
+     DISPLAY_COLOR_STATE.store(mode, Ordering::Release);
+     mutate_persisted_state(|s| s.display_color = mode)?;
+@@ -2766,8 +2412,8 @@ fn set_display_toggle(case_id: i32, enabled: bool, state: &AtomicI32) -> Result<
      Ok(())
  }
  
@@ -39120,7 +39295,7 @@ index 8d2b048..9398140 100644
  
  static PERFORMANCE_PROFILE_SUPPORTED: AtomicI32 = AtomicI32::new(-1);
  static PERFORMANCE_PROFILE_VERIFIED: AtomicI32 = AtomicI32::new(-1);
-@@ -2822,7 +2448,8 @@ struct PersistedState {
+@@ -2822,7 +2468,8 @@ struct PersistedState {
      cpu_manual: i32,
      cpu_online_mask: i32,
      cpu0: String,
@@ -39130,7 +39305,7 @@ index 8d2b048..9398140 100644
      cpu7: String,
      gpu: String,
      io: String,
-@@ -2838,11 +2465,14 @@ struct PersistedState {
+@@ -2838,11 +2485,14 @@ struct PersistedState {
      gpu_power_policy: String,
      cpu_min_freq0: i32,
      cpu_max_freq0: i32,
@@ -39147,7 +39322,7 @@ index 8d2b048..9398140 100644
  }
  
  impl Default for PersistedState {
-@@ -2868,7 +2498,8 @@ impl Default for PersistedState {
+@@ -2868,7 +2518,8 @@ impl Default for PersistedState {
              cpu_manual: 0,
              cpu_online_mask: 0xFF,
              cpu0: String::new(),
@@ -39157,7 +39332,7 @@ index 8d2b048..9398140 100644
              cpu7: String::new(),
              gpu: String::new(),
              io: String::new(),
-@@ -2876,19 +2507,22 @@ impl Default for PersistedState {
+@@ -2876,19 +2527,22 @@ impl Default for PersistedState {
              zram_size_mb: 8192,
              zram_algorithm: "lz4".to_string(),
              zram_swappiness: 100,
@@ -39186,7 +39361,7 @@ index 8d2b048..9398140 100644
          }
      }
  }
-@@ -2896,14 +2530,14 @@ impl Default for PersistedState {
+@@ -2896,14 +2550,14 @@ impl Default for PersistedState {
  fn legacy_gpu_profile_cpu_signature(state: &PersistedState) -> bool {
      let governors = (
          state.cpu0.as_str(),
@@ -39204,7 +39379,7 @@ index 8d2b048..9398140 100644
          state.cpu_min_freq7,
          state.cpu_max_freq7,
      );
-@@ -2937,12 +2571,12 @@ fn migrate_legacy_gpu_profile_cpu_state(state: &mut PersistedState) -> bool {
+@@ -2937,12 +2591,12 @@ fn migrate_legacy_gpu_profile_cpu_state(state: &mut PersistedState) -> bool {
      let reset_legacy_cpu = legacy_gpu_profile_cpu_signature(state);
      if reset_legacy_cpu {
          state.cpu0.clear();
@@ -39220,7 +39395,7 @@ index 8d2b048..9398140 100644
          state.cpu_min_freq7 = -1;
          state.cpu_max_freq7 = -1;
      }
-@@ -2952,14 +2586,12 @@ fn migrate_legacy_gpu_profile_cpu_state(state: &mut PersistedState) -> bool {
+@@ -2952,14 +2606,12 @@ fn migrate_legacy_gpu_profile_cpu_state(state: &mut PersistedState) -> bool {
  }
  
  fn restore_vendor_cpu_defaults() {
@@ -39239,7 +39414,7 @@ index 8d2b048..9398140 100644
  }
  
  static PERSISTED_STATE: OnceLock<Mutex<PersistedState>> = OnceLock::new();
-@@ -3027,7 +2659,7 @@ fn parse_persisted_state(raw: &str) -> PersistedState {
+@@ -3027,7 +2679,7 @@ fn parse_persisted_state(raw: &str) -> PersistedState {
              }
              "touch" => {
                  if let Some(v) = int_value() {
@@ -39248,7 +39423,7 @@ index 8d2b048..9398140 100644
                  }
              }
              "display_color" => {
-@@ -3147,7 +2779,8 @@ fn parse_persisted_state(raw: &str) -> PersistedState {
+@@ -3147,7 +2799,8 @@ fn parse_persisted_state(raw: &str) -> PersistedState {
                  }
              }
              "cpu0" => state.cpu0 = value.to_string(),
@@ -39258,7 +39433,7 @@ index 8d2b048..9398140 100644
              "cpu7" => state.cpu7 = value.to_string(),
              "gpu" => state.gpu = value.to_string(),
              "io" => state.io = value.to_string(),
-@@ -3199,14 +2832,24 @@ fn parse_persisted_state(raw: &str) -> PersistedState {
+@@ -3199,14 +2852,24 @@ fn parse_persisted_state(raw: &str) -> PersistedState {
                      state.cpu_max_freq0 = v;
                  }
              }
@@ -39269,25 +39444,25 @@ index 8d2b048..9398140 100644
 +                }
 +            }
 +            "cpu_min_freq5" => {
-+                if let Some(v) = int_value() {
-+                    state.cpu_min_freq5 = v;
-+                }
-+            }
-+            "cpu_max_freq2" => {
                  if let Some(v) = int_value() {
 -                    state.cpu_min_freq4 = v;
-+                    state.cpu_max_freq2 = v;
++                    state.cpu_min_freq5 = v;
                  }
              }
 -            "cpu_max_freq4" => {
-+            "cpu_max_freq5" => {
++            "cpu_max_freq2" => {
                  if let Some(v) = int_value() {
 -                    state.cpu_max_freq4 = v;
++                    state.cpu_max_freq2 = v;
++                }
++            }
++            "cpu_max_freq5" => {
++                if let Some(v) = int_value() {
 +                    state.cpu_max_freq5 = v;
                  }
              }
              "cpu_min_freq7" => {
-@@ -3219,6 +2862,11 @@ fn parse_persisted_state(raw: &str) -> PersistedState {
+@@ -3219,6 +2882,11 @@ fn parse_persisted_state(raw: &str) -> PersistedState {
                      state.cpu_max_freq7 = v;
                  }
              }
@@ -39299,7 +39474,7 @@ index 8d2b048..9398140 100644
              "cpu_thermal_mode_prev" => {
                  if let Some(v) = int_value() {
                      state.cpu_thermal_mode_prev = if valid_mi_thermal_config_mode(v) {
-@@ -3235,7 +2883,7 @@ fn parse_persisted_state(raw: &str) -> PersistedState {
+@@ -3235,7 +2903,7 @@ fn parse_persisted_state(raw: &str) -> PersistedState {
      if state.charging != -1 {
          state.charging = normalize_charging_profile(state.charging);
      }
@@ -39308,7 +39483,7 @@ index 8d2b048..9398140 100644
          state.touch = -1;
      }
      if !(-1..=2).contains(&state.display_color) {
-@@ -3305,7 +2953,8 @@ fn save_persisted_state(state: &PersistedState) -> Result<(), String> {
+@@ -3305,7 +2973,8 @@ fn save_persisted_state(state: &PersistedState) -> Result<(), String> {
          state.cpu_online_mask | 0x01
      ));
      out.push_str(&format!("cpu0={}\n", state.cpu0));
@@ -39318,7 +39493,7 @@ index 8d2b048..9398140 100644
      out.push_str(&format!("cpu7={}\n", state.cpu7));
      out.push_str(&format!("gpu={}\n", state.gpu));
      out.push_str(&format!("io={}\n", state.io));
-@@ -3321,10 +2970,13 @@ fn save_persisted_state(state: &PersistedState) -> Result<(), String> {
+@@ -3321,10 +2990,13 @@ fn save_persisted_state(state: &PersistedState) -> Result<(), String> {
      out.push_str(&format!("gpu_power_policy={}\n", state.gpu_power_policy));
      out.push_str(&format!("cpu_min_freq0={}\n", state.cpu_min_freq0));
      out.push_str(&format!("cpu_max_freq0={}\n", state.cpu_max_freq0));
@@ -39334,7 +39509,109 @@ index 8d2b048..9398140 100644
      out.push_str(&format!(
          "cpu_thermal_mode_prev={}\n",
          state.cpu_thermal_mode_prev
-@@ -3685,7 +3337,8 @@ fn record_successful_command(cmd: &str) -> Result<(), String> {
+@@ -3373,17 +3045,52 @@ where
+ 
+ fn expert_value_range(channel: i32) -> Option<(i32, i32)> {
+     match channel {
+-        1..=3 => Some((0, 255)),
+-        4 => Some((0, 255)),
+-        5 => Some((-40, 50)),
+-        6 => Some((-240, 255)),
+-        7 => Some((0, 100)),
+-        8 => Some((254, 270)),
++        1..=3 => Some((50, 255)),
++        4 => Some((-180, 180)),
++        5 => Some((-50, 50)),
++        6 => Some((-255, 255)),
++        7 => Some((-100, 100)),
++        8 => Some((170, 270)),
+         _ => None,
+     }
+ }
+ 
++fn verify_display_expert(channel: i32, expected: i32) -> Result<(), String> {
++    let mut last = "no display readback".to_string();
++    for _ in 0..3 {
++        std::thread::sleep(Duration::from_millis(60));
++        let result = run_process_with_timeout(
++            "/system/bin/dumpsys",
++            &["vendor.xiaomi.hardware.displayfeature_aidl.IDisplayFeature/default"],
++            Duration::from_millis(800),
++        )
++        .and_then(|output| {
++            if !output.status.success() {
++                return Err("display dump failed".into());
++            }
++            display_readback::expert(&output.stdout)
++        });
++        match result {
++            Ok(values) if values[0] == 1 && values[(channel + 1) as usize] == expected => {
++                return Ok(());
++            }
++            Ok(values) => {
++                last = format!(
++                    "expert readback differs: enabled={}, channel={channel}, requested={expected}, live={}",
++                    values[0],
++                    values[(channel + 1) as usize]
++                )
++            }
++            Err(error) => last = error,
++        }
++    }
++    Err(last)
++}
++
+ fn set_expert_gamut(gamut: i32) -> Result<(), String> {
++    let _guard = display_mode_apply_lock()
++        .lock()
++        .map_err(|_| "display mode lock poisoned")?;
+     service_control::remember("display.hal", serde_json::json!(true))?;
+     if !matches!(gamut, 1..=3) {
+         return Err("invalid expert gamut".into());
+@@ -3404,6 +3111,9 @@ fn set_expert_gamut(gamut: i32) -> Result<(), String> {
+         return Err("display HAL expert gamut transaction failed".into());
+     }
+ 
++    verify_display_expert(0, gamut).inspect_err(|_| {
++        DISPLAY_APPLY_ACK.store(0, Ordering::Release);
++    })?;
+     mutate_persisted_state(|s| s.expert_gamut = gamut).inspect_err(|_| {
+         DISPLAY_APPLY_ACK.store(0, Ordering::Release);
+     })?;
+@@ -3412,6 +3122,9 @@ fn set_expert_gamut(gamut: i32) -> Result<(), String> {
+ }
+ 
+ fn set_expert_channel(channel: i32, value: i32) -> Result<(), String> {
++    let _guard = display_mode_apply_lock()
++        .lock()
++        .map_err(|_| "display mode lock poisoned")?;
+     service_control::remember("display.hal", serde_json::json!(true))?;
+     let display_color = persisted_state()
+         .lock()
+@@ -3440,6 +3153,9 @@ fn set_expert_channel(channel: i32, value: i32) -> Result<(), String> {
+         ));
+     }
+ 
++    verify_display_expert(channel, value).inspect_err(|_| {
++        DISPLAY_APPLY_ACK.store(0, Ordering::Release);
++    })?;
+     mutate_persisted_state(|s| s.expert[(channel - 1) as usize] = value).inspect_err(|_| {
+         DISPLAY_APPLY_ACK.store(0, Ordering::Release);
+     })?;
+@@ -3472,6 +3188,12 @@ fn reset_expert_display() -> Result<(), String> {
+         }
+     }
+ 
++    for &(channel, value) in DEFAULTS {
++        verify_display_expert(channel, value).inspect_err(|_| {
++            DISPLAY_APPLY_ACK.store(0, Ordering::Release);
++        })?;
++    }
++    verify_display_expert(0, 1)?;
+     mutate_persisted_state(|s| {
+         s.display_color = 0;
+         s.display_temp = 2;
+@@ -3685,7 +3407,8 @@ fn record_successful_command(cmd: &str) -> Result<(), String> {
          }
          return mutate_persisted_state(|state| match policy {
              0 => state.cpu0 = gov.clone(),
@@ -39344,7 +39621,7 @@ index 8d2b048..9398140 100644
              7 => state.cpu7 = gov.clone(),
              _ => {}
          });
-@@ -4047,7 +3700,7 @@ fn reassert_runtime_state(force_touch: bool) -> Result<(), String> {
+@@ -4047,7 +3770,7 @@ fn reassert_runtime_state(force_touch: bool) -> Result<(), String> {
      let mut attempted = 0i32;
      let mut applied = 0i32;
  
@@ -39353,7 +39630,15 @@ index 8d2b048..9398140 100644
          attempted += 1;
          // Serialize with OEM release, then recheck ownership. A wake event
          // queued before the user's selection must not resurrect the old mode.
-@@ -4112,6 +3765,12 @@ fn restore_persisted_state() {
+@@ -4075,7 +3798,6 @@ fn reassert_runtime_state(force_touch: bool) -> Result<(), String> {
+     KEEPALIVE_APPLY_ACK.store(if ok { 1 } else { 0 }, Ordering::Release);
+ 
+     if ok {
+-        DISPLAY_APPLY_ACK.store(1, Ordering::Release);
+         KEEPALIVE_APPLY_COUNT.fetch_add(1, Ordering::AcqRel);
+         Ok(())
+     } else {
+@@ -4112,6 +3834,12 @@ fn restore_persisted_state() {
          .map(|s| s.clone())
          .unwrap_or_default();
  
@@ -39366,7 +39651,7 @@ index 8d2b048..9398140 100644
      let legacy_state = state.gpu_profile_cpu_isolated != 1;
      let reset_legacy_cpu = migrate_legacy_gpu_profile_cpu_state(&mut state);
      if legacy_state {
-@@ -4142,7 +3801,7 @@ fn restore_persisted_state() {
+@@ -4142,7 +3870,7 @@ fn restore_persisted_state() {
          wake_bypass_monitor();
      }
  
@@ -39375,7 +39660,7 @@ index 8d2b048..9398140 100644
          if let Ok(_guard) = touch_profile_apply_lock().lock() {
              let owned = persisted_state()
                  .lock()
-@@ -4236,8 +3895,11 @@ fn restore_persisted_state() {
+@@ -4236,8 +3964,11 @@ fn restore_persisted_state() {
          let _ = set_cpu_governor(0, &state.cpu0);
      }
  
@@ -39389,7 +39674,7 @@ index 8d2b048..9398140 100644
      }
  
      if !state.cpu7.is_empty() {
-@@ -4283,44 +3945,10 @@ fn restore_persisted_state() {
+@@ -4283,44 +4014,10 @@ fn restore_persisted_state() {
      };
  
      if cpu_mode_ready {
@@ -39438,7 +39723,7 @@ index 8d2b048..9398140 100644
          }
      } else {
          CPU_FREQ_WRITE_ACK.store(0, Ordering::Release);
-@@ -4377,7 +4005,7 @@ fn late_boot_restore_loop() {
+@@ -4377,7 +4074,7 @@ fn late_boot_restore_loop() {
          let runtime_result = reassert_runtime_state(true);
          reassert_persisted_governors();
          eprintln!(
@@ -39447,7 +39732,7 @@ index 8d2b048..9398140 100644
              attempt + 1,
              KEEPALIVE_APPLY_ACK.load(Ordering::Acquire),
              i32::from(runtime_result.is_ok()),
-@@ -4408,7 +4036,8 @@ fn reassert_persisted_governors() {
+@@ -4408,7 +4105,8 @@ fn reassert_persisted_governors() {
  
      for (policy, desired) in [
          (0, state.cpu0.as_str()),
@@ -39457,7 +39742,7 @@ index 8d2b048..9398140 100644
          (7, state.cpu7.as_str()),
      ] {
          if desired.is_empty() {
-@@ -4422,48 +4051,8 @@ fn reassert_persisted_governors() {
+@@ -4422,48 +4120,8 @@ fn reassert_persisted_governors() {
          }
      }
  
@@ -39508,7 +39793,7 @@ index 8d2b048..9398140 100644
      PERFORMANCE_PROFILE_VERIFIED.store(1, Ordering::Release);
      PERFORMANCE_PROFILE_OK.store(
          if gpu_profile_verified(state.perf) {
-@@ -4497,153 +4086,12 @@ fn reassert_persisted_governors() {
+@@ -4497,153 +4155,12 @@ fn reassert_persisted_governors() {
  }
  
  fn cpu_frequency_guard() {
@@ -39665,7 +39950,7 @@ index 8d2b048..9398140 100644
  }
  
  #[cfg(target_os = "android")]
-@@ -4769,7 +4217,7 @@ fn charging_power_supply_event_loop() {
+@@ -4769,7 +4286,7 @@ fn charging_power_supply_event_loop() {
          };
          if fd < 0 {
              eprintln!(
@@ -39674,7 +39959,7 @@ index 8d2b048..9398140 100644
                  std::io::Error::last_os_error()
              );
              std::thread::sleep(Duration::from_secs(2));
-@@ -4791,7 +4239,7 @@ fn charging_power_supply_event_loop() {
+@@ -4791,7 +4308,7 @@ fn charging_power_supply_event_loop() {
          } == 0;
          if !bound {
              eprintln!(
@@ -39683,7 +39968,7 @@ index 8d2b048..9398140 100644
                  std::io::Error::last_os_error()
              );
              unsafe { close(fd) };
-@@ -4824,7 +4272,7 @@ fn charging_power_supply_event_loop() {
+@@ -4824,7 +4341,7 @@ fn charging_power_supply_event_loop() {
                  .map(|state| (state.charging, state.bypass_charging))
                  .unwrap_or((0, 0));
              if let Err(error) = maintain_charging_state(profile, bypass_charging) {
@@ -39692,7 +39977,7 @@ index 8d2b048..9398140 100644
              }
          }
  
-@@ -4836,10 +4284,10 @@ fn charging_power_supply_event_loop() {
+@@ -4836,10 +4353,10 @@ fn charging_power_supply_event_loop() {
  pub fn start_background_services() {
      #[cfg(target_os = "android")]
      std::thread::spawn(bypass_monitor_loop);
@@ -39705,7 +39990,7 @@ index 8d2b048..9398140 100644
          std::thread::spawn(loopback_ipc_loop);
      }
      let _ = persisted_state();
-@@ -4888,7 +4336,7 @@ fn loopback_ipc_loop() {
+@@ -4888,7 +4405,7 @@ fn loopback_ipc_loop() {
                  // A previous daemon can leave the fixed local port transiently
                  // unavailable. Keep the authenticated Unix transports alive
                  // and recover this compatibility listener without a reboot.
@@ -39714,7 +39999,7 @@ index 8d2b048..9398140 100644
                  std::thread::sleep(Duration::from_secs(2));
                  continue;
              }
-@@ -4900,7 +4348,7 @@ fn loopback_ipc_loop() {
+@@ -4900,7 +4417,7 @@ fn loopback_ipc_loop() {
                      std::thread::spawn(move || serve_loopback_client(stream));
                  }
                  Err(error) => {
@@ -39723,7 +40008,7 @@ index 8d2b048..9398140 100644
                      std::thread::sleep(Duration::from_millis(100));
                  }
              }
-@@ -5194,15 +4642,21 @@ fn gpu_read_raw(path: &str) -> Option<String> {
+@@ -5194,15 +4711,21 @@ fn gpu_read_raw(path: &str) -> Option<String> {
  }
  
  fn gpu_get_loading() -> i32 {
@@ -39753,7 +40038,7 @@ index 8d2b048..9398140 100644
  }
  
  fn gpu_get_cur_opp_index() -> i32 {
-@@ -5274,58 +4728,27 @@ fn parse_ged_current_frequency_mhz(raw: &str) -> Option<i32> {
+@@ -5274,58 +4797,27 @@ fn parse_ged_current_frequency_mhz(raw: &str) -> Option<i32> {
  }
  
  fn gpu_get_cur_freq_mhz() -> i32 {
@@ -39820,7 +40105,7 @@ index 8d2b048..9398140 100644
  }
  
  fn gpu_flag(path: &str) -> i32 {
-@@ -5336,354 +4759,69 @@ fn gpu_flag(path: &str) -> i32 {
+@@ -5336,354 +4828,69 @@ fn gpu_flag(path: &str) -> i32 {
  }
  
  fn gpu_get_ged_boost() -> i32 {
@@ -40197,7 +40482,7 @@ index 8d2b048..9398140 100644
  }
  
  fn snapshot_persistence_fields() -> Vec<String> {
-@@ -5694,7 +4832,8 @@ fn snapshot_persistence_fields() -> Vec<String> {
+@@ -5694,7 +4901,8 @@ fn snapshot_persistence_fields() -> Vec<String> {
          .unwrap_or_default();
  
      let cpu0_drift = drift_status(&state.cpu0, &policy_governor(0));
@@ -40207,7 +40492,7 @@ index 8d2b048..9398140 100644
      let cpu7_drift = drift_status(&state.cpu7, &policy_governor(7));
      let desired_gpu_governor = if !state.gpu_governor.is_empty() {
          state.gpu_governor.as_str()
-@@ -5705,8 +4844,10 @@ fn snapshot_persistence_fields() -> Vec<String> {
+@@ -5705,8 +4913,10 @@ fn snapshot_persistence_fields() -> Vec<String> {
      let io_drift = drift_status(&state.io, &io_scheduler());
      let cpu_live_min0 = get_cpu_cluster_live_min_freq(0);
      let cpu_live_max0 = get_cpu_cluster_live_max_freq(0);
@@ -40220,7 +40505,7 @@ index 8d2b048..9398140 100644
      let cpu_live_min7 = get_cpu_cluster_live_min_freq(7);
      let cpu_live_max7 = get_cpu_cluster_live_max_freq(7);
      let cpu_freq_drift0 = cpu_frequency_drift_status(
-@@ -5715,11 +4856,17 @@ fn snapshot_persistence_fields() -> Vec<String> {
+@@ -5715,11 +4925,17 @@ fn snapshot_persistence_fields() -> Vec<String> {
          cpu_live_min0,
          cpu_live_max0,
      );
@@ -40243,7 +40528,7 @@ index 8d2b048..9398140 100644
      );
      let cpu_freq_drift7 = cpu_frequency_drift_status(
          state.cpu_min_freq7,
-@@ -5765,7 +4912,8 @@ fn snapshot_persistence_fields() -> Vec<String> {
+@@ -5765,7 +4981,8 @@ fn snapshot_persistence_fields() -> Vec<String> {
              state.gpu_profile_cpu_isolated
          ),
          format!("cpu_drift0={cpu0_drift}"),
@@ -40253,7 +40538,7 @@ index 8d2b048..9398140 100644
          format!("cpu_drift7={cpu7_drift}"),
          format!("gpu_drift={gpu_drift}"),
          format!("io_drift={io_drift}"),
-@@ -5817,6 +4965,8 @@ fn snapshot_persistence_fields() -> Vec<String> {
+@@ -5817,6 +5034,8 @@ fn snapshot_persistence_fields() -> Vec<String> {
          format!("zram_alg={zram_alg}"),
          format!("gpu_load={}", gpu_get_loading()),
          format!("gpu_cur_freq={}", gpu_get_cur_freq_mhz()),
@@ -40262,7 +40547,7 @@ index 8d2b048..9398140 100644
          format!("gpu_min_freq={}", gpu_get_min_freq_mhz()),
          format!("gpu_max_freq={}", gpu_get_max_freq_mhz()),
          format!("gpu_gov={}", gpu_get_governor()),
-@@ -5834,14 +4984,18 @@ fn snapshot_persistence_fields() -> Vec<String> {
+@@ -5834,14 +5053,18 @@ fn snapshot_persistence_fields() -> Vec<String> {
          format!("gpu_power_policy_str={}", gpu_get_power_policy()),
          format!("cpu_min0={}", state.cpu_min_freq0),
          format!("cpu_max0={}", state.cpu_max_freq0),
@@ -40285,7 +40570,7 @@ index 8d2b048..9398140 100644
          format!("cpu_live_min7={cpu_live_min7}"),
          format!("cpu_live_max7={cpu_live_max7}"),
          format!(
-@@ -5849,8 +5003,13 @@ fn snapshot_persistence_fields() -> Vec<String> {
+@@ -5849,8 +5072,13 @@ fn snapshot_persistence_fields() -> Vec<String> {
              CPU_FREQ_WRITE_ACK.load(Ordering::Acquire)
          ),
          format!("cpu_freq_drift0={cpu_freq_drift0}"),
@@ -40300,7 +40585,7 @@ index 8d2b048..9398140 100644
          format!("cpu_thermal_mode={cpu_thermal_mode}"),
          format!("cpu_thermal_mode_prev={}", state.cpu_thermal_mode_prev),
          format!("cpu_thermal_unrestricted={cpu_thermal_unrestricted}"),
-@@ -5859,7 +5018,8 @@ fn snapshot_persistence_fields() -> Vec<String> {
+@@ -5859,7 +5087,8 @@ fn snapshot_persistence_fields() -> Vec<String> {
              CPU_THERMAL_MODE_ACK.load(Ordering::Acquire)
          ),
          format!("cpu_avail0={}", cpu_frequency_table_csv(0)),
@@ -40310,7 +40595,7 @@ index 8d2b048..9398140 100644
          format!("cpu_avail7={}", cpu_frequency_table_csv(7)),
          format!(
              "touch_sustained_rate={}",
-@@ -6032,7 +5192,8 @@ fn snapshot() -> String {
+@@ -6032,7 +5261,8 @@ fn snapshot() -> String {
          format!("cpu6={}", sanitize(cpu_freq(6))),
          format!("cpu7={}", sanitize(cpu_freq(7))),
          format!("gov0={}", sanitize(policy_governor(0))),
@@ -40320,7 +40605,7 @@ index 8d2b048..9398140 100644
          format!("gov7={}", sanitize(policy_governor(7))),
          format!("gpu_gov={}", sanitize(gpu_governor())),
          format!("io={}", sanitize(io_scheduler())),
-@@ -6120,6 +5281,7 @@ fn restore_released_controls() -> Result<(), String> {
+@@ -6120,6 +5350,7 @@ fn restore_released_controls() -> Result<(), String> {
              errors.push(format!("{name}: {error}"));
          }
      };
@@ -40328,7 +40613,7 @@ index 8d2b048..9398140 100644
      // Never leave an adapter charge-pause request behind when control is disabled.
      if bypass_charging_path().is_some()
          && (saved.bypass_charging == 1 || bypass_charging_state() == 1)
-@@ -6127,6 +5289,7 @@ fn restore_released_controls() -> Result<(), String> {
+@@ -6127,6 +5358,7 @@ fn restore_released_controls() -> Result<(), String> {
          run("bypass", apply_bypass_charging(false));
      }
      run("touch output", touch_resampler::set_target_hz(0));
@@ -40336,7 +40621,7 @@ index 8d2b048..9398140 100644
      if service_control::original("touch.hal").is_some() {
          if vendor_binder::touch_available() {
              run("OEM touch", apply_touch_hal_profile(0));
-@@ -6156,28 +5319,6 @@ fn restore_released_controls() -> Result<(), String> {
+@@ -6156,28 +5388,6 @@ fn restore_released_controls() -> Result<(), String> {
              );
          }
      }
@@ -40365,7 +40650,7 @@ index 8d2b048..9398140 100644
      if service_control::original("display.hal").is_some() {
          // The vendor HAL provides setters but no reliable cross-ROM getters.
          // Use its neutral/default modes rather than inventing a captured value.
-@@ -6444,7 +5585,7 @@ pub fn handle_command(line: &str) -> String {
+@@ -6444,7 +5654,7 @@ pub fn handle_command(line: &str) -> String {
              return format!("ERR {error}");
          }
          if !service_control::enabled() {
@@ -40374,7 +40659,7 @@ index 8d2b048..9398140 100644
          }
          if let Err(error) = capture_feature_original(cmd) {
              return format!("ERR {error}");
-@@ -6499,7 +5640,11 @@ fn handle_enabled_command(line: &str) -> String {
+@@ -6499,7 +5709,11 @@ fn handle_enabled_command(line: &str) -> String {
          };
      }
  
@@ -40387,7 +40672,7 @@ index 8d2b048..9398140 100644
          let value = match arg.trim() {
              "standard" | "adaptive" => 0,
              "boost" => 90,
-@@ -6727,8 +5872,33 @@ fn handle_enabled_command(line: &str) -> String {
+@@ -6727,8 +5941,33 @@ fn handle_enabled_command(line: &str) -> String {
  
      match result {
          Ok(()) => match record_successful_command(cmd) {
@@ -40422,7 +40707,7 @@ index 8d2b048..9398140 100644
          },
          Err(e) => format!("ERR {e}"),
      }
-@@ -6736,7 +5906,7 @@ fn handle_enabled_command(line: &str) -> String {
+@@ -6736,7 +5975,7 @@ fn handle_enabled_command(line: &str) -> String {
  
  fn serve_authenticated_client<S: Read + Write>(mut stream: S, peer: u32, transport: i32) {
      if !client_uid_allowed(peer, configured_app_uid_policy()) {
@@ -40431,7 +40716,7 @@ index 8d2b048..9398140 100644
          let _ = stream.write_all(b"ERR unauthorized peer\n");
          return;
      }
-@@ -6792,7 +5962,7 @@ fn serve_client_with_transport(mut stream: UnixStream, transport: i32) {
+@@ -6792,7 +6031,7 @@ fn serve_client_with_transport(mut stream: UnixStream, transport: i32) {
      match peer_uid(&stream) {
          Ok(peer) => serve_authenticated_client(stream, peer, transport),
          Err(error) => {
@@ -40440,7 +40725,7 @@ index 8d2b048..9398140 100644
              let _ = stream.write_all(b"ERR peer credentials unavailable\n");
          }
      }
-@@ -6802,7 +5972,7 @@ fn serve_loopback_client(mut stream: TcpStream) {
+@@ -6802,7 +6041,7 @@ fn serve_loopback_client(mut stream: TcpStream) {
      match tcp_peer_uid(&stream) {
          Ok(peer) => serve_authenticated_client(stream, peer, 3),
          Err(error) => {
@@ -40449,7 +40734,7 @@ index 8d2b048..9398140 100644
              let _ = stream.write_all(b"ERR peer credentials unavailable\n");
          }
      }
-@@ -6814,9 +5984,27 @@ pub fn serve_client(stream: UnixStream) {
+@@ -6814,9 +6053,27 @@ pub fn serve_client(stream: UnixStream) {
  
  #[cfg(test)]
  mod tests {
@@ -40478,7 +40763,7 @@ index 8d2b048..9398140 100644
              let state = super::parse_persisted_state(raw);
              assert_eq!(state.touch, -1);
              assert_eq!(state.display_color, -1);
-@@ -6830,7 +6018,7 @@ mod tests {
+@@ -6830,7 +6087,7 @@ mod tests {
  
      #[test]
      fn explicit_touch_and_colour_choices_survive_loading() {
@@ -40487,7 +40772,7 @@ index 8d2b048..9398140 100644
              let state = super::parse_persisted_state(&format!(
                  "touch={profile}\ndisplay_color=2\ndisplay_temp=3\nsilky=1\n"
              ));
-@@ -6840,6 +6028,15 @@ mod tests {
+@@ -6840,6 +6097,15 @@ mod tests {
              assert_eq!(state.silky, 1);
          }
      }
@@ -40503,7 +40788,7 @@ index 8d2b048..9398140 100644
      #[test]
      fn bypass_threshold_migrates_and_validates_without_losing_saved_intent() {
          let legacy = super::parse_persisted_state("bypass_charging=1\n");
-@@ -6916,9 +6113,9 @@ mod tests {
+@@ -6916,9 +6182,9 @@ mod tests {
      #[test]
      fn native_socket_resolves_and_accepts_the_package_app_id_for_every_user() {
          let packages = "android 1000 0 /data/user/0/android platform 0 1 1 1 0\n\
@@ -40515,7 +40800,7 @@ index 8d2b048..9398140 100644
              Some(10_228)
          );
          let policy = AppUidPolicy::EnforceAppId(10_228);
-@@ -6932,7 +6129,7 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
+@@ -6932,7 +6198,7 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
      }
  
      #[test]
@@ -40524,7 +40809,7 @@ index 8d2b048..9398140 100644
          assert!(valid_charging_profile(0));
          assert!(valid_charging_profile(25));
          assert!(valid_charging_profile(33));
-@@ -6981,12 +6178,12 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
+@@ -6981,12 +6247,12 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
      fn bounds_external_framework_commands() {
          let output = run_process_with_timeout(
              "/bin/sh",
@@ -40539,7 +40824,7 @@ index 8d2b048..9398140 100644
  
          let started = std::time::Instant::now();
          let error =
-@@ -7000,7 +6197,7 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
+@@ -7000,7 +6266,7 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
      fn parses_cpu_frequency_table_as_sorted_unique_mhz_opps() {
          assert_eq!(
              parse_cpu_frequency_table("2100000 2000000 1000000 2000000 bad 3250500"),
@@ -40548,7 +40833,7 @@ index 8d2b048..9398140 100644
          );
      }
  
-@@ -7022,7 +6219,7 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
+@@ -7022,7 +6288,7 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
      }
  
      #[test]
@@ -40557,7 +40842,7 @@ index 8d2b048..9398140 100644
          assert_eq!(mi_thermal_cpu_limit_request(0, 2100), "cpu0 2100000");
          assert_eq!(mi_thermal_cpu_limit_request(4, 3000), "cpu4 3000000");
          assert_eq!(mi_thermal_cpu_limit_request(7, 3250), "cpu7 3250000");
-@@ -7040,7 +6237,7 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
+@@ -7040,7 +6306,7 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
      }
  
      #[test]
@@ -40566,7 +40851,7 @@ index 8d2b048..9398140 100644
          assert_eq!(classify_touch_panel_version("driver version: gt9916"), 1);
          assert_eq!(classify_touch_panel_version("Goodix GDIX algorithm"), 1);
          assert_eq!(classify_touch_panel_version("FocalTech FT3683G"), 2);
-@@ -7048,7 +6245,7 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
+@@ -7048,7 +6314,7 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
      }
  
      #[test]
@@ -40575,7 +40860,7 @@ index 8d2b048..9398140 100644
          let mut bytes = vec![0u8; 0x80];
          let offset = 0x10;
          put_u16(&mut bytes, offset, 135);
-@@ -7088,7 +6285,7 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
+@@ -7088,7 +6354,7 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
      }
  
      #[test]
@@ -40584,7 +40869,7 @@ index 8d2b048..9398140 100644
          assert_eq!(parse_ged_current_frequency_mhz("40 260000\n"), Some(260));
          assert_eq!(parse_ged_current_frequency_mhz("0 1300000\n"), Some(1300));
      }
-@@ -7109,11 +6306,11 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
+@@ -7109,11 +6375,11 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
      }
  
      #[test]
@@ -40599,7 +40884,7 @@ index 8d2b048..9398140 100644
      }
  
      #[test]
-@@ -7140,7 +6337,7 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
+@@ -7140,7 +6406,7 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
          assert!(!persisted_cpu_ranges_active(&stock));
  
          let partial = PersistedState {
@@ -40608,7 +40893,7 @@ index 8d2b048..9398140 100644
              ..PersistedState::default()
          };
          assert!(!persisted_cpu_ranges_active(&partial));
-@@ -7159,12 +6356,12 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
+@@ -7159,12 +6425,12 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
              perf: 3,
              gpu_profile_cpu_isolated: 0,
              cpu0: "performance".into(),
@@ -40624,7 +40909,7 @@ index 8d2b048..9398140 100644
              cpu_min_freq7: 3250,
              cpu_max_freq7: 3250,
              ..PersistedState::default()
-@@ -7180,12 +6377,12 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
+@@ -7180,12 +6446,12 @@ io.github.neeschal.rodinessential 10228 0 /data/user/0/io.github.neeschal.rodine
              perf: 3,
              gpu_profile_cpu_isolated: 0,
              cpu0: "schedutil".into(),
@@ -50973,7 +51258,7 @@ index 1ec7890..0a04ff5 100644
      if (_scroll != position) {
        _scroll?.removeListener(_checkVisibility);
 diff --git a/ui/flutter/lib/main.dart b/ui/flutter/lib/main.dart
-index 84e3707..8492c73 100644
+index 84e3707..644f20b 100644
 --- a/ui/flutter/lib/main.dart
 +++ b/ui/flutter/lib/main.dart
 @@ -10,6 +10,7 @@ import 'package:flutter/gestures.dart' show Drag;
@@ -54307,6 +54592,80 @@ index 84e3707..8492c73 100644
            ),
          ),
          const SizedBox(height: 9),
+@@ -7659,7 +7627,7 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
+               _ExpertSliderRow(
+                 title: 'R',
+                 value: expert[0],
+-                min: 0,
++                min: 50,
+                 max: 255,
+                 defaultValue: 255,
+                 activeColor: const Color(0xFFFF3B30),
+@@ -7671,7 +7639,7 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
+               _ExpertSliderRow(
+                 title: 'G',
+                 value: expert[1],
+-                min: 0,
++                min: 50,
+                 max: 255,
+                 defaultValue: 255,
+                 activeColor: const Color(0xFF34C759),
+@@ -7683,7 +7651,7 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
+               _ExpertSliderRow(
+                 title: 'B',
+                 value: expert[2],
+-                min: 0,
++                min: 50,
+                 max: 255,
+                 defaultValue: 255,
+                 activeColor: const Color(0xFF007AFF),
+@@ -7716,8 +7684,8 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
+               _ExpertSliderRow(
+                 title: 'Hue',
+                 value: expert[3],
+-                min: 0,
+-                max: 255,
++                min: -180,
++                max: 180,
+                 defaultValue: 0,
+                 activeColor: const Color(0xFFFF9F0A),
+                 enabled: expertCalibrationEnabled,
+@@ -7728,7 +7696,7 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
+               _ExpertSliderRow(
+                 title: 'Saturation',
+                 value: expert[4],
+-                min: -40,
++                min: -50,
+                 max: 50,
+                 defaultValue: 0,
+                 activeColor: const Color(0xFFBF5AF2),
+@@ -7740,7 +7708,7 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
+               _ExpertSliderRow(
+                 title: 'Value',
+                 value: expert[5],
+-                min: -240,
++                min: -255,
+                 max: 255,
+                 defaultValue: 0,
+                 activeColor: const Color(0xFF64D2FF),
+@@ -7752,7 +7720,7 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
+               _ExpertSliderRow(
+                 title: 'Contrast',
+                 value: expert[6],
+-                min: 0,
++                min: -100,
+                 max: 100,
+                 defaultValue: 50,
+                 activeColor: const Color(0xFFFFD60A),
+@@ -7764,7 +7732,7 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
+               _ExpertSliderRow(
+                 title: 'Gamma',
+                 value: expert[7],
+-                min: 254,
++                min: 170,
+                 max: 270,
+                 defaultValue: 262,
+                 activeColor: const Color(0xFF30D158),
 @@ -7779,9 +7747,9 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
                    onPressed: expertCalibrationEnabled
                        ? () {
@@ -54538,14 +54897,7 @@ index 84e3707..8492c73 100644
 +                  policy: 2,
 +                  title: 'Performance Cluster A',
 +                  subtitle: '3× Cortex-A720 · Cores 2–4',
-                   accent: const Color(0xFFA066FF),
--                  currentMhz: clusterCurrentMhz(const <int>[4, 5, 6]),
--                  targetMinMhz: backend.cpuTargetMinFrequency(4),
--                  targetMaxMhz: backend.cpuTargetMaxFrequency(4),
--                  liveMinMhz: backend.cpuLiveMinFrequency(4),
--                  liveMaxMhz: backend.cpuLiveMaxFrequency(4),
--                  availableMhz: backend.cpuAvailableFrequencies(4),
--                  governorCode: s.cpuGovernor4,
++                  accent: const Color(0xFFA066FF),
 +                  currentMhz: clusterCurrentMhz(const <int>[2, 3, 4]),
 +                  targetMinMhz: backend.cpuTargetMinFrequency(2),
 +                  targetMaxMhz: backend.cpuTargetMaxFrequency(2),
@@ -54553,8 +54905,7 @@ index 84e3707..8492c73 100644
 +                  liveMaxMhz: backend.cpuLiveMaxFrequency(2),
 +                  availableMhz: backend.cpuAvailableFrequencies(2),
 +                  governorCode: s.cpuGovernor2,
-                   writeAck: frequencyWriteAck,
--                  drift: backend.cpuFrequencyDrift(4),
++                  writeAck: frequencyWriteAck,
 +                  drift: backend.cpuFrequencyDrift(2),
 +                  enabled: canWrite,
 +                  onFeedback: _showGlassToast,
@@ -54564,7 +54915,14 @@ index 84e3707..8492c73 100644
 +                  policy: 5,
 +                  title: 'Performance Cluster B',
 +                  subtitle: '2× Cortex-A720 · Cores 5–6',
-+                  accent: const Color(0xFFA066FF),
+                   accent: const Color(0xFFA066FF),
+-                  currentMhz: clusterCurrentMhz(const <int>[4, 5, 6]),
+-                  targetMinMhz: backend.cpuTargetMinFrequency(4),
+-                  targetMaxMhz: backend.cpuTargetMaxFrequency(4),
+-                  liveMinMhz: backend.cpuLiveMinFrequency(4),
+-                  liveMaxMhz: backend.cpuLiveMaxFrequency(4),
+-                  availableMhz: backend.cpuAvailableFrequencies(4),
+-                  governorCode: s.cpuGovernor4,
 +                  currentMhz: clusterCurrentMhz(const <int>[5, 6]),
 +                  targetMinMhz: backend.cpuTargetMinFrequency(5),
 +                  targetMaxMhz: backend.cpuTargetMaxFrequency(5),
@@ -54572,7 +54930,8 @@ index 84e3707..8492c73 100644
 +                  liveMaxMhz: backend.cpuLiveMaxFrequency(5),
 +                  availableMhz: backend.cpuAvailableFrequencies(5),
 +                  governorCode: s.cpuGovernor5,
-+                  writeAck: frequencyWriteAck,
+                   writeAck: frequencyWriteAck,
+-                  drift: backend.cpuFrequencyDrift(4),
 +                  drift: backend.cpuFrequencyDrift(5),
                    enabled: canWrite,
                    onFeedback: _showGlassToast,
@@ -54821,18 +55180,6 @@ index 84e3707..8492c73 100644
 -    final int exact = widget.availableMhz.indexOf(frequency);
 -    if (exact >= 0) return exact;
 -    return widget.availableMhz.indexOf(_nearestAvailable(frequency));
--  }
--
--  String _frequencyLabel(int mhz) {
--    if (mhz <= 0) return '—';
--    if (mhz >= 1000) {
--      final int hundredths = (mhz * 100) ~/ 1000;
--      final String value = (hundredths / 100).toStringAsFixed(
--        hundredths % 10 == 0 ? 1 : 2,
--      );
--      return '$value GHz';
--    }
--    return '$mhz MHz';
 +    if (oldWidget.saved != widget.saved)
 +      _performance = _isPerformance(widget.saved);
 +  }
@@ -54855,8 +55202,13 @@ index 84e3707..8492c73 100644
 +    widget.onSelected(mode);
    }
  
--  String _governorLabel() => switch (widget.governorCode) {
--    0 => 'sugov_ext',
+-  String _frequencyLabel(int mhz) {
+-    if (mhz <= 0) return '—';
+-    if (mhz >= 1000) {
+-      final int hundredths = (mhz * 100) ~/ 1000;
+-      final String value = (hundredths / 100).toStringAsFixed(
+-        hundredths % 10 == 0 ? 1 : 2,
+-      );
 +  Widget _stat(String label, String value, ColorScheme colors) => Expanded(
 +    child: Column(
 +      crossAxisAlignment: CrossAxisAlignment.start,
@@ -55256,12 +55608,13 @@ index 84e3707..8492c73 100644
 +      final String value = (hundredths / 100).toStringAsFixed(
 +        hundredths % 10 == 0 ? 1 : 2,
 +      );
-+      return '$value GHz';
-+    }
-+    return '$mhz MHz';
-+  }
-+
-+  String _governorLabel() => switch (widget.governorCode) {
+       return '$value GHz';
+     }
+     return '$mhz MHz';
+   }
+ 
+   String _governorLabel() => switch (widget.governorCode) {
+-    0 => 'sugov_ext',
 +    0 => 'walt',
 +    5 => 'migov',
      1 => 'conservative',

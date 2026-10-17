@@ -92,7 +92,7 @@ for upgrade compatibility; its processes and executables use Onyx names.
 
 ## Validation
 
-This revision has passed 104 daemon unit tests and the daemon integration suite,
+This revision has passed 107 daemon unit tests and the daemon integration suite,
 Android ARM64 Rust checks for the host and daemon, contract checks, Dart syntax,
 XML and package/JNI consistency checks. The latest identity and Sconfig panel
 still require a full APK build and visual validation on the device.

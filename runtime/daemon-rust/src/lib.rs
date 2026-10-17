@@ -1,3 +1,4 @@
+mod display_readback;
 mod limits;
 mod onyx;
 mod sconfig;
@@ -368,7 +369,9 @@ mod vendor_binder {
         }
 
         if ok {
-            ok &= unsafe { AIBinder_transact(binder, 7, &mut input, &mut output, 0) } == STATUS_OK;
+            ok &= unsafe {
+                AIBinder_transact(binder, 7, &mut input, &mut output, FLAG_PRIVATE_VENDOR)
+            } == STATUS_OK;
         } else if !input.is_null() {
             unsafe { AParcel_delete(input) };
         }
@@ -2330,15 +2333,32 @@ fn apply_display_color_locked(mode: i32) -> Result<(), String> {
         return Ok(());
     }
     service_control::remember("display.hal", serde_json::json!(true))?;
-    let case_id = match mode {
-        0 => 2,
-        1 => 0,
-        2 => 1,
-        _ => return Err("invalid display color mode".into()),
+    let request = match mode {
+        // Original PRO must enter expert mode, not the separate Standard case.
+        0 => {
+            let gamut = persisted_state()
+                .lock()
+                .map_err(|_| "state lock poisoned")?
+                .expert_gamut;
+            if !vendor_binder::set_display_feature(26, gamut, 0) {
+                Err("display HAL expert activation failed".to_string())
+            } else {
+                verify_display_expert(0, gamut)
+            }
+        }
+        1 | 2 => {
+            let case_id = if mode == 1 { 0 } else { 1 };
+            if vendor_binder::set_display_feature(case_id, 2, 255) {
+                Ok(())
+            } else {
+                Err("display HAL color transaction failed".to_string())
+            }
+        }
+        _ => Err("invalid display color mode".to_string()),
     };
-    if !vendor_binder::set_display_feature(case_id, 2, 255) {
+    if let Err(error) = request {
         DISPLAY_APPLY_ACK.store(0, Ordering::Release);
-        return Err("display HAL color transaction failed".into());
+        return Err(error);
     }
     DISPLAY_COLOR_STATE.store(mode, Ordering::Release);
     mutate_persisted_state(|s| s.display_color = mode)?;
@@ -3025,17 +3045,52 @@ where
 
 fn expert_value_range(channel: i32) -> Option<(i32, i32)> {
     match channel {
-        1..=3 => Some((0, 255)),
-        4 => Some((0, 255)),
-        5 => Some((-40, 50)),
-        6 => Some((-240, 255)),
-        7 => Some((0, 100)),
-        8 => Some((254, 270)),
+        1..=3 => Some((50, 255)),
+        4 => Some((-180, 180)),
+        5 => Some((-50, 50)),
+        6 => Some((-255, 255)),
+        7 => Some((-100, 100)),
+        8 => Some((170, 270)),
         _ => None,
     }
 }
 
+fn verify_display_expert(channel: i32, expected: i32) -> Result<(), String> {
+    let mut last = "no display readback".to_string();
+    for _ in 0..3 {
+        std::thread::sleep(Duration::from_millis(60));
+        let result = run_process_with_timeout(
+            "/system/bin/dumpsys",
+            &["vendor.xiaomi.hardware.displayfeature_aidl.IDisplayFeature/default"],
+            Duration::from_millis(800),
+        )
+        .and_then(|output| {
+            if !output.status.success() {
+                return Err("display dump failed".into());
+            }
+            display_readback::expert(&output.stdout)
+        });
+        match result {
+            Ok(values) if values[0] == 1 && values[(channel + 1) as usize] == expected => {
+                return Ok(());
+            }
+            Ok(values) => {
+                last = format!(
+                    "expert readback differs: enabled={}, channel={channel}, requested={expected}, live={}",
+                    values[0],
+                    values[(channel + 1) as usize]
+                )
+            }
+            Err(error) => last = error,
+        }
+    }
+    Err(last)
+}
+
 fn set_expert_gamut(gamut: i32) -> Result<(), String> {
+    let _guard = display_mode_apply_lock()
+        .lock()
+        .map_err(|_| "display mode lock poisoned")?;
     service_control::remember("display.hal", serde_json::json!(true))?;
     if !matches!(gamut, 1..=3) {
         return Err("invalid expert gamut".into());
@@ -3056,6 +3111,9 @@ fn set_expert_gamut(gamut: i32) -> Result<(), String> {
         return Err("display HAL expert gamut transaction failed".into());
     }
 
+    verify_display_expert(0, gamut).inspect_err(|_| {
+        DISPLAY_APPLY_ACK.store(0, Ordering::Release);
+    })?;
     mutate_persisted_state(|s| s.expert_gamut = gamut).inspect_err(|_| {
         DISPLAY_APPLY_ACK.store(0, Ordering::Release);
     })?;
@@ -3064,6 +3122,9 @@ fn set_expert_gamut(gamut: i32) -> Result<(), String> {
 }
 
 fn set_expert_channel(channel: i32, value: i32) -> Result<(), String> {
+    let _guard = display_mode_apply_lock()
+        .lock()
+        .map_err(|_| "display mode lock poisoned")?;
     service_control::remember("display.hal", serde_json::json!(true))?;
     let display_color = persisted_state()
         .lock()
@@ -3092,6 +3153,9 @@ fn set_expert_channel(channel: i32, value: i32) -> Result<(), String> {
         ));
     }
 
+    verify_display_expert(channel, value).inspect_err(|_| {
+        DISPLAY_APPLY_ACK.store(0, Ordering::Release);
+    })?;
     mutate_persisted_state(|s| s.expert[(channel - 1) as usize] = value).inspect_err(|_| {
         DISPLAY_APPLY_ACK.store(0, Ordering::Release);
     })?;
@@ -3124,6 +3188,12 @@ fn reset_expert_display() -> Result<(), String> {
         }
     }
 
+    for &(channel, value) in DEFAULTS {
+        verify_display_expert(channel, value).inspect_err(|_| {
+            DISPLAY_APPLY_ACK.store(0, Ordering::Release);
+        })?;
+    }
+    verify_display_expert(0, 1)?;
     mutate_persisted_state(|s| {
         s.display_color = 0;
         s.display_temp = 2;
@@ -3728,7 +3798,6 @@ fn reassert_runtime_state(force_touch: bool) -> Result<(), String> {
     KEEPALIVE_APPLY_ACK.store(if ok { 1 } else { 0 }, Ordering::Release);
 
     if ok {
-        DISPLAY_APPLY_ACK.store(1, Ordering::Release);
         KEEPALIVE_APPLY_COUNT.fetch_add(1, Ordering::AcqRel);
         Ok(())
     } else {

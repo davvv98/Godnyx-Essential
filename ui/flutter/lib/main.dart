@@ -7627,7 +7627,7 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
               _ExpertSliderRow(
                 title: 'R',
                 value: expert[0],
-                min: 0,
+                min: 50,
                 max: 255,
                 defaultValue: 255,
                 activeColor: const Color(0xFFFF3B30),
@@ -7639,7 +7639,7 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
               _ExpertSliderRow(
                 title: 'G',
                 value: expert[1],
-                min: 0,
+                min: 50,
                 max: 255,
                 defaultValue: 255,
                 activeColor: const Color(0xFF34C759),
@@ -7651,7 +7651,7 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
               _ExpertSliderRow(
                 title: 'B',
                 value: expert[2],
-                min: 0,
+                min: 50,
                 max: 255,
                 defaultValue: 255,
                 activeColor: const Color(0xFF007AFF),
@@ -7684,8 +7684,8 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
               _ExpertSliderRow(
                 title: 'Hue',
                 value: expert[3],
-                min: 0,
-                max: 255,
+                min: -180,
+                max: 180,
                 defaultValue: 0,
                 activeColor: const Color(0xFFFF9F0A),
                 enabled: expertCalibrationEnabled,
@@ -7696,7 +7696,7 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
               _ExpertSliderRow(
                 title: 'Saturation',
                 value: expert[4],
-                min: -40,
+                min: -50,
                 max: 50,
                 defaultValue: 0,
                 activeColor: const Color(0xFFBF5AF2),
@@ -7708,7 +7708,7 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
               _ExpertSliderRow(
                 title: 'Value',
                 value: expert[5],
-                min: -240,
+                min: -255,
                 max: 255,
                 defaultValue: 0,
                 activeColor: const Color(0xFF64D2FF),
@@ -7720,7 +7720,7 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
               _ExpertSliderRow(
                 title: 'Contrast',
                 value: expert[6],
-                min: 0,
+                min: -100,
                 max: 100,
                 defaultValue: 50,
                 activeColor: const Color(0xFFFFD60A),
@@ -7732,7 +7732,7 @@ class _DisplayStudioScreenState extends State<DisplayStudioScreen> {
               _ExpertSliderRow(
                 title: 'Gamma',
                 value: expert[7],
-                min: 254,
+                min: 170,
                 max: 270,
                 defaultValue: 262,
                 activeColor: const Color(0xFF30D158),
