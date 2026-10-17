@@ -56,8 +56,10 @@ This does not guarantee every frequency in every scenario. Driver and vendor
 services can change effective limits; the backend does not continuously rewrite
 the requested frequencies to fight those changes.
 
-Fixed-rate touch 240/480/resampling and charging power profiles **still require
-adaptation**. OEM charging and available telemetry remain enabled. Bypass is
+Touch offers OEM (approximately 125 Hz observed) and Xiaomi game mode
+(approximately 250 Hz observed). The 480 Hz option is disabled pending adaptation;
+the 1000 Hz resampling option has been removed. Charging power profiles **still
+require adaptation**. OEM charging and available telemetry remain enabled. Bypass is
 available only when the explicit nodes required by the backend are detected;
 they were absent from the supplied device snapshot.
 
@@ -90,7 +92,7 @@ for upgrade compatibility; its processes and executables use Onyx names.
 
 ## Validation
 
-This revision has passed 103 daemon unit tests and three integration tests,
+This revision has passed 104 daemon unit tests and the daemon integration suite,
 Android ARM64 Rust checks for the host and daemon, contract checks, Dart syntax,
 XML and package/JNI consistency checks. The latest identity and Sconfig panel
 still require a full APK build and visual validation on the device.

@@ -44,5 +44,15 @@ RPC: `SET cpu.sconfig 6`; restoration: `SET cpu.sconfig -1`.
 
 The display backend uses Xiaomi DisplayFeature AIDL. Individual effects require
 validation on the port; an accepted call does not guarantee a visible change.
-Fixed-rate touch profiles remain pending and are not presented as operational
-controls in this adaptation.
+Touch profiles are OEM (mode 0 = 0; approximately 125 Hz observed) and 250 Hz
+(mode 0 = 1; approximately 250 Hz observed). Both use TouchFeature AIDL
+transaction 9 and verify game-mode readback through transaction 1. These labels
+are device observations, not daemon measurements of physical sampling rate.
+
+The original game-mode value is journaled before changing it and restored when
+control is disabled or released. OEM explicitly switches game mode off. Profile
+selection persists across reboot. Old pending/resampled selections are discarded.
+480 Hz remains visible but disabled; the 1000 Hz option has been removed.
+Requests for pending or removed profiles are rejected by the daemon, including
+per-app requests. No THP memory modification or event injection is enabled by
+these two profiles.

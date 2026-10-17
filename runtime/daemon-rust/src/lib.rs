@@ -300,6 +300,55 @@ mod vendor_binder {
         ok
     }
 
+    pub fn get_touch_mode(display_id: i32, mode: i32) -> Option<i32> {
+        const SERVICE: &[u8] = b"vendor.xiaomi.hw.touchfeature.ITouchFeature/default\0";
+        const DESCRIPTOR: &[u8] = b"vendor.xiaomi.hw.touchfeature.ITouchFeature\0";
+        let Some(binder) = check_service(SERVICE, DESCRIPTOR, &TOUCH_CLASS) else {
+            return None;
+        };
+
+        let mut input: *mut AParcel = ptr::null_mut();
+        let mut output: *mut AParcel = ptr::null_mut();
+        let mut ok = unsafe { AIBinder_prepareTransaction(binder, &mut input) } == STATUS_OK;
+
+        if ok {
+            ok &= unsafe { AParcel_writeInt32(input, display_id) } == STATUS_OK;
+            ok &= unsafe { AParcel_writeInt32(input, mode) } == STATUS_OK;
+        }
+
+        if ok {
+            ok &= unsafe {
+                AIBinder_transact(binder, 1, &mut input, &mut output, FLAG_PRIVATE_VENDOR)
+            } == STATUS_OK;
+        } else if !input.is_null() {
+            unsafe { AParcel_delete(input) };
+        }
+
+        let mut result = -1i32;
+        if ok && !output.is_null() {
+            let mut status: *mut AStatus = ptr::null_mut();
+            ok &= unsafe { AParcel_readStatusHeader(output, &mut status) } == STATUS_OK;
+            if !status.is_null() {
+                ok &= unsafe { AStatus_isOk(status) };
+                unsafe { AStatus_delete(status) };
+            } else {
+                ok = false;
+            }
+
+            if ok {
+                ok &= unsafe { AParcel_readInt32(output, &mut result) } == STATUS_OK;
+            }
+        } else {
+            ok = false;
+        }
+
+        if !output.is_null() {
+            unsafe { AParcel_delete(output) };
+        }
+        unsafe { AIBinder_decStrong(binder) };
+        if ok { Some(result) } else { None }
+    }
+
     pub fn set_display_feature(case_id: i32, mode_id: i32, cookie: i32) -> bool {
         const SERVICE: &[u8] =
             b"vendor.xiaomi.hardware.displayfeature_aidl.IDisplayFeature/default\0";
@@ -353,6 +402,10 @@ mod vendor_binder {
     pub fn display_available() -> bool {
         false
     }
+    pub fn get_touch_mode(_: i32, _: i32) -> Option<i32> {
+        None
+    }
+
     pub fn set_touch_mode(_: i32, _: i32, _: i32) -> bool {
         false
     }
@@ -2001,27 +2054,7 @@ fn goodix_report_rate_hz() -> Option<u16> {
 }
 
 fn touch_profile_is_live(profile: i32) -> bool {
-    let Some(expected_rate) = touch_profile_locked_rate(profile) else {
-        return false;
-    };
-    let panel = touch_panel_code();
-    let native_matches = if vendor_binder::touch_available() {
-        let thp_matches = locate_touch_thp_layout()
-            .and_then(|layout| read_touch_thp_rate(layout, layout.current_rate_addr))
-            .map(|rate| rate == expected_rate)
-            .unwrap_or(false);
-        thp_matches && (panel != 1 || goodix_report_rate_hz() == Some(expected_rate))
-    } else if panel == 1 {
-        goodix_report_rate_hz() == Some(expected_rate)
-    } else {
-        false
-    };
-    let resampler_matches = if profile == 3 {
-        touch_resampler::ready_hz() == 1000
-    } else {
-        touch_resampler::ready_hz() == 0
-    };
-    native_matches && resampler_matches
+    matches!(profile, 0 | 1) && vendor_binder::get_touch_mode(0, 0) == Some(profile)
 }
 
 type TouchHalStep = (i32, i32, bool);
@@ -2163,16 +2196,56 @@ fn apply_touch_driver_fallback(profile: i32, panel: i32) -> Result<(), String> {
     ))
 }
 
-fn set_touch_profile(profile: i32) -> Result<(), String> {
-    if profile == 0 {
-        return release_touch_control();
+fn write_onyx_game_mode(value: i32) -> Result<(), String> {
+    if !vendor_binder::set_touch_mode(0, 0, value) {
+        return Err("Xiaomi game-mode write failed".into());
     }
-    Err("Onyx touch rate control pending panel/HAL validation".into())
+    if vendor_binder::get_touch_mode(0, 0) != Some(value) {
+        return Err("Xiaomi game-mode readback mismatch".into());
+    }
+    Ok(())
+}
+
+fn restore_onyx_game_mode() -> Result<(), String> {
+    if let Some(value) = service_control::original("touch.game_mode").and_then(|v| v.as_i64()) {
+        write_onyx_game_mode(value as i32)?;
+    }
+    Ok(())
+}
+
+fn set_touch_profile(profile: i32) -> Result<(), String> {
+    let _guard = touch_profile_apply_lock()
+        .lock()
+        .map_err(|_| "touch lock poisoned")?;
+    apply_touch_profile_locked(profile)
 }
 
 fn apply_touch_profile_locked(profile: i32) -> Result<(), String> {
-    let _ = profile;
-    Err("Onyx touch rate control pending panel/HAL validation".into())
+    if !matches!(profile, 0 | 1) {
+        return Err("480 Hz is pending adaptation; resampled touch profiles were removed".into());
+    }
+    let previous = vendor_binder::get_touch_mode(0, 0)
+        .filter(|v| matches!(v, 0 | 1))
+        .ok_or("Xiaomi game-mode readback unavailable")?;
+    service_control::remember("touch.game_mode", serde_json::json!(previous))?;
+    touch_resampler::set_target_hz(0)?;
+    let result = write_onyx_game_mode(profile)
+        .and_then(|_| mutate_persisted_state(|state| state.touch = profile));
+    if let Err(error) = result {
+        let rollback = write_onyx_game_mode(previous);
+        TOUCH_APPLY_ACK.store(0, Ordering::Release);
+        return Err(match rollback {
+            Ok(()) => error,
+            Err(e) => format!("{error}; rollback: {e}"),
+        });
+    }
+    TOUCH_STATE.store(profile, Ordering::Release);
+    TOUCH_CONTROL_PATH.store(1, Ordering::Release);
+    // Confirm the HAL mode only; never report a tester observation as measured Hz.
+    TOUCH_SUSTAINED_RATE.store(-1, Ordering::Release);
+    TOUCH_INSTANT_RATE.store(-1, Ordering::Release);
+    TOUCH_APPLY_ACK.store(1, Ordering::Release);
+    Ok(())
 }
 
 fn release_touch_control() -> Result<(), String> {
@@ -2180,6 +2253,7 @@ fn release_touch_control() -> Result<(), String> {
         .lock()
         .map_err(|_| "touch profile apply lock poisoned")?;
     touch_resampler::set_target_hz(0)?;
+    restore_onyx_game_mode()?;
     let originals = service_control::originals();
     let mut released = Vec::new();
     if service_control::original("touch.hal").is_some() && vendor_binder::touch_available() {
@@ -2214,7 +2288,12 @@ fn release_touch_control() -> Result<(), String> {
                 return Err(format!("OEM touch readback mismatch: {key}"));
             }
         }
-        if touch_node || matches!(key.as_str(), "touch.hal" | "touch.thp_rate") {
+        if touch_node
+            || matches!(
+                key.as_str(),
+                "touch.hal" | "touch.thp_rate" | "touch.game_mode"
+            )
+        {
             released.push(key);
         }
     }
@@ -2580,7 +2659,7 @@ fn parse_persisted_state(raw: &str) -> PersistedState {
             }
             "touch" => {
                 if let Some(v) = int_value() {
-                    state.touch = v;
+                    state.touch = if matches!(v, 0 | 1) { v } else { -1 };
                 }
             }
             "display_color" => {
@@ -2804,7 +2883,7 @@ fn parse_persisted_state(raw: &str) -> PersistedState {
     if state.charging != -1 {
         state.charging = normalize_charging_profile(state.charging);
     }
-    if !(1..=3).contains(&state.touch) {
+    if !matches!(state.touch, 0 | 1) {
         state.touch = -1;
     }
     if !(-1..=2).contains(&state.display_color) {
@@ -3621,7 +3700,7 @@ fn reassert_runtime_state(force_touch: bool) -> Result<(), String> {
     let mut attempted = 0i32;
     let mut applied = 0i32;
 
-    if (1..=3).contains(&state.touch) {
+    if matches!(state.touch, 0 | 1) {
         attempted += 1;
         // Serialize with OEM release, then recheck ownership. A wake event
         // queued before the user's selection must not resurrect the old mode.
@@ -3722,7 +3801,7 @@ fn restore_persisted_state() {
         wake_bypass_monitor();
     }
 
-    if (1..=3).contains(&state.touch) {
+    if matches!(state.touch, 0 | 1) {
         if let Ok(_guard) = touch_profile_apply_lock().lock() {
             let owned = persisted_state()
                 .lock()
@@ -5210,6 +5289,7 @@ fn restore_released_controls() -> Result<(), String> {
         run("bypass", apply_bypass_charging(false));
     }
     run("touch output", touch_resampler::set_target_hz(0));
+    run("touch game mode", restore_onyx_game_mode());
     if service_control::original("touch.hal").is_some() {
         if vendor_binder::touch_available() {
             run("OEM touch", apply_touch_hal_profile(0));
@@ -5924,7 +6004,7 @@ mod tests {
 
     #[test]
     fn fresh_and_partial_settings_leave_touch_and_display_to_rom() {
-        for raw in ["", "charging=0\n", "touch=0\ndisplay_temp=0\ndolby=7\n"] {
+        for raw in ["", "charging=0\n", "touch=3\ndisplay_temp=0\ndolby=7\n"] {
             let state = super::parse_persisted_state(raw);
             assert_eq!(state.touch, -1);
             assert_eq!(state.display_color, -1);
@@ -5938,7 +6018,7 @@ mod tests {
 
     #[test]
     fn explicit_touch_and_colour_choices_survive_loading() {
-        for profile in 1..=3 {
+        for profile in 0..=1 {
             let state = super::parse_persisted_state(&format!(
                 "touch={profile}\ndisplay_color=2\ndisplay_temp=3\nsilky=1\n"
             ));
@@ -5948,6 +6028,15 @@ mod tests {
             assert_eq!(state.silky, 1);
         }
     }
+    #[test]
+    fn retired_touch_profiles_are_not_restored() {
+        for profile in [2, 3, 4, 7] {
+            let state = super::parse_persisted_state(&format!("touch={profile}\n"));
+            assert_eq!(state.touch, -1);
+            assert!(super::set_touch_profile(profile).is_err());
+        }
+    }
+
     #[test]
     fn bypass_threshold_migrates_and_validates_without_losing_saved_intent() {
         let legacy = super::parse_persisted_state("bypass_charging=1\n");

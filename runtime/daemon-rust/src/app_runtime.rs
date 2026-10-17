@@ -605,8 +605,8 @@ fn capture_vendor_refresh(user: u32) -> Result<Value, String> {
 }
 fn capabilities() -> Result<Capabilities, String> {
     let mut caps = Capabilities::default();
-    if touch_panel_code() != 0 || vendor_binder::touch_available() {
-        caps.touch = BTreeSet::new();
+    if vendor_binder::get_touch_mode(0, 0).is_some_and(|v| matches!(v, 0 | 1)) {
+        caps.touch = BTreeSet::from([0, 1]);
     }
     if gpu_get_min_freq_mhz() > 0 && gpu_get_max_freq_mhz() > 0 {
         caps.gpu = BTreeSet::from([0, 1, 2, 3]);

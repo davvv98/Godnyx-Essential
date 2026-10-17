@@ -7,6 +7,8 @@ the delivered source and does not imply that a release has already been publishe
 
 - Disable implicit Rust binary discovery: only onyx_daemon/onyx_ctl are built;
   remove explicitly renamed legacy files before compilation.
+- Replace touch choices with OEM (125 Hz observed), game mode (250 Hz observed)
+  and disabled 480 Hz pending adaptation. Remove the 1000 Hz option.
 - Add Qualcomm KGSL telemetry and profiles based on real OPPs.
 - Support CPU policies 0/2/5/7 with exact frequency conversion to kHz.
 - Separate saved requests from effective bounds; retain IO and invalid-read errors.

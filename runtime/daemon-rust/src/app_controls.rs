@@ -830,10 +830,8 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::temp_dir().join(format!(
-            "onyx-profiles-test-{}-{nonce}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("onyx-profiles-test-{}-{nonce}", std::process::id()));
         let path = dir.join("profiles.json");
         assert_eq!(Config::load(&path).unwrap(), Config::default());
         let mut config = Config::default();

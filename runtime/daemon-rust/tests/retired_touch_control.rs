@@ -37,11 +37,18 @@ fn removed_wake_control_is_not_restored_reported_or_saved_after_upgrade() {
             "ERR unknown command"
         );
     }
-    // A normal OEM touch selection rewrites only supported preferences.
-    assert_eq!(handle_command("SET touch 0"), "OK applied");
+    // Touch game-mode selection must not claim success without an Android HAL.
+    assert!(handle_command("SET touch 0").starts_with("ERR "));
+    assert!(handle_command("SET touch 1").starts_with("ERR "));
+    for retired in [2, 3, 7] {
+        assert!(handle_command(&format!("SET touch {retired}")).starts_with("ERR "));
+    }
+    // A supported display release rewrites preferences without resurrecting dt2w.
+    assert_eq!(handle_command("SET display.temp -1"), "OK applied");
     let saved = fs::read_to_string(dir.join("state.conf")).unwrap();
     assert!(!saved.contains("dt2w"));
     assert!(saved.lines().any(|line| line == "display_color=2"));
+    assert_eq!(handle_command("SET service.enabled 1"), "OK applied");
     let service: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(dir.join("service.json")).unwrap()).unwrap();
     assert!(service["originals"].get("touch.dt2w").is_none());

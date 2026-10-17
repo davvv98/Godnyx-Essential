@@ -3126,15 +3126,14 @@ class _HomePulseHero extends StatelessWidget {
             ? '—'
             : '${snapshot.batteryTempC!.toStringAsFixed(1)}°C';
         final String touchValue = switch (snapshot.touchState) {
-          1 => '240 Hz',
-          2 => '480 Hz',
-          3 => 'Super',
+          1 => '250 Hz',
+          2 => '480 Hz (pending)',
           _ => 'OEM',
         };
         final String touchDetail = switch (snapshot.touchState) {
-          1 || 2 => 'Fixed target',
-          3 => '1000 / 500 Hz',
-          _ => 'ROM control',
+          1 => 'Game mode',
+          2 => 'Pending adaptation',
+          _ => '125 Hz observed',
         };
         final int liveGpuFreq = backend.extendedValue(46) >= 260
             ? backend.extendedValue(46)
@@ -4350,9 +4349,8 @@ String _onyxPerformanceLabel(int profile) {
 
 String _onyxTouchLabel(int profile) {
   return switch (profile) {
-    1 => '240 Hz',
-    2 => '480 Hz',
-    3 => 'Super Touch',
+    1 => '250 Hz',
+    2 => '480 Hz (pending)',
     _ => 'OEM Control',
   };
 }
@@ -6986,29 +6984,25 @@ class _TouchBoostScreenState extends State<TouchBoostScreen> {
 
   String _profileTitle(int profile) => switch (profile) {
     1 => '250 Hz Mode',
-    2 => '500 Hz Mode',
-    3 => '1000 Hz Output',
+    2 => '480 Hz · Pending',
     _ => 'OEM Control',
   };
 
   String _profileRate(int profile) => switch (profile) {
-    1 => '240 Hz native timing · simple testers display about 250',
-    2 => '480 Hz native timing · simple testers display about 500',
-    3 => 'Precise 1 ms Android output · native source remains 480 Hz',
-    _ => 'Onyx Essential override released · ROM-managed timing',
+    1 => 'Xiaomi game mode · approximately 250 Hz observed',
+    2 => 'Pending driver and firmware validation',
+    _ => 'Xiaomi game mode off · approximately 125 Hz observed',
   };
 
   Color _profileAccent(int profile) => switch (profile) {
     1 => const Color(0xFFFFB84D),
     2 => const Color(0xFFFF6B57),
-    3 => const Color(0xFFE95CFF),
     _ => const Color(0xFFFFB84D),
   };
 
   IconData _profileIcon(int profile) => switch (profile) {
     1 => Icons.sports_esports_rounded,
     2 => Icons.speed_rounded,
-    3 => Icons.whatshot_rounded,
     _ => Icons.auto_awesome_rounded,
   };
 
@@ -7018,7 +7012,7 @@ class _TouchBoostScreenState extends State<TouchBoostScreen> {
       builder: (OnyxBackendSnapshot snapshot) {
         final OnyxBackend backend = OnyxBackend.instance;
         final int savedProfile =
-            (1 <= snapshot.touchState && snapshot.touchState <= 3)
+            (snapshot.touchState == 1)
             ? snapshot.touchState
             : 0;
         final int activeProfile = _pendingProfile ?? savedProfile;
@@ -7050,7 +7044,7 @@ class _TouchBoostScreenState extends State<TouchBoostScreen> {
             DetailHeader(title: 'Touch Response', onBack: widget.onBack),
             const SizedBox(height: 4),
             Text(
-              'OEM Control leaves touch timing to your ROM by default. Choose an override to save it across restarts.',
+              'Choose OEM (125 Hz observed) or game mode (250 Hz observed). The 480 Hz option is pending adaptation.',
               style: TextStyle(
                 fontSize: 13.5,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -7108,9 +7102,9 @@ class _TouchBoostScreenState extends State<TouchBoostScreen> {
                         const SizedBox(height: 3),
                         Text(
                           oemManaged
-                              ? 'No Onyx Essential fixed-rate profile is active. Your ROM manages touch timing.'
+                              ? 'Game mode is off. Approximately 125 Hz was observed on this device.'
                               : !applying && touchAck == 1
-                              ? 'Reasserted after boot, screen wake, and vendor resets'
+                              ? 'Game-mode readback confirmed; actual sampling rate is not measured here'
                               : 'Waiting for the panel HAL to confirm every required mode',
                           style: TextStyle(
                             fontSize: 11.5,
@@ -7129,8 +7123,8 @@ class _TouchBoostScreenState extends State<TouchBoostScreen> {
             const SizedBox(height: 12),
             const SurfaceCard(
               child: _InfoBlock(
-                title: 'Tester values',
-                text: '250 uses the native 240 Hz panel target and 500 uses the native 480 Hz target; simple tester apps round those values to about 250 and 500. The 1000 option delivers a one-millisecond Android event stream from the 480 Hz native source. OEM Control releases the fixed profile and returns timing to vendor management.',
+                title: 'Touch rate status',
+                text: '125 and 250 Hz are tester observations on this device, not a live rate measurement. The active control changes Xiaomi game mode. 480 Hz remains unavailable until its control path is validated.',
               ),
             ),
           ],
@@ -7169,8 +7163,8 @@ class _TouchProfileGrid extends StatelessWidget {
         _TouchProfileTile(
           profile: 0,
           title: 'OEM Control',
-          rate: 'ROM-managed touch timing',
-          detail: 'Default · No fixed-rate override',
+          rate: '125 Hz observed',
+          detail: 'Default · Game mode off',
           icon: Icons.auto_awesome_rounded,
           accent: Theme.of(context).colorScheme.primary,
           selected: selectedProfile == 0,
@@ -7184,8 +7178,8 @@ class _TouchProfileGrid extends StatelessWidget {
               child: _TouchProfileTile(
                 profile: 1,
                 title: '250 Hz',
-                rate: '240 Hz native target',
-                detail: 'Tester display ≈250',
+                rate: '250 Hz observed',
+                detail: 'Xiaomi game mode',
                 icon: Icons.sports_esports_rounded,
                 accent: const Color(0xFFFFB84D),
                 selected: selectedProfile == 1,
@@ -7197,30 +7191,19 @@ class _TouchProfileGrid extends StatelessWidget {
             Expanded(
               child: _TouchProfileTile(
                 profile: 2,
-                title: '500 Hz',
-                rate: '480 Hz native target',
-                detail: 'Tester display ≈500',
+                title: '480 Hz',
+                rate: 'Pending',
+                detail: 'Not available yet',
                 icon: Icons.speed_rounded,
                 accent: const Color(0xFFFF6B57),
-                selected: selectedProfile == 2,
-                enabled: enabled,
+                selected: false,
+                enabled: false,
                 onSelected: onSelected,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
-        _TouchProfileTile(
-          profile: 3,
-          title: '1000 Hz',
-          rate: '1 ms Android event output',
-          detail: 'Resampled from the native 480 Hz source',
-          icon: Icons.whatshot_rounded,
-          accent: const Color(0xFFE95CFF),
-          selected: selectedProfile == 3,
-          enabled: enabled,
-          onSelected: onSelected,
-        ),
+
       ],
     );
   }

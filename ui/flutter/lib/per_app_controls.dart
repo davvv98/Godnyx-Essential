@@ -1049,14 +1049,14 @@ class _PerAppEditorState extends State<_PerAppEditor> {
               const SizedBox(height: 14),
               _choice('Touch response', _draft['touch'], <String, String>{
                 for (final int v in _numbers('touch'))
-                  '$v': v == 0 ? 'OEM adaptive' : _onyxTouchLabel(v),
+                  '$v': v == 0 ? 'OEM · 125 Hz observed' : _onyxTouchLabel(v),
               }, (String? v) => _set('touch', v == null ? null : int.parse(v))),
               _choice(
                 'Refresh rate',
                 _draft['refresh'],
                 <String, String>{
                   for (final int v in _numbers('refresh'))
-                    '$v': v == 0 ? 'OEM adaptive' : '$v Hz',
+                    '$v': v == 0 ? 'OEM · 125 Hz observed' : '$v Hz',
                 },
                 (String? v) => _set('refresh', v == null ? null : int.parse(v)),
               ),

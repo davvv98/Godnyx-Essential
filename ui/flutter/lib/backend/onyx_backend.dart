@@ -547,13 +547,13 @@ final class OnyxBackend {
   bool setBypassCharging(bool enabled) =>
       _queue(_setBypassChargingNative(enabled ? 1 : 0));
   bool setTouchProfile(int profile) {
-    if (profile < 0 || profile > 7) return false;
+    if (profile != 0 && profile != 1) return false;
     return _queue(_setTouchStateNative(profile));
   }
 
   // Kept for older call sites outside the Flutter screen bundle. Enabled maps
-  // to Onyx's sustained 480 Hz profile; disabled restores OEM Dynamic.
-  bool setTouchBoost(bool enabled) => setTouchProfile(enabled ? 2 : 0);
+  // to Xiaomi game mode; disabled selects OEM (game mode off).
+  bool setTouchBoost(bool enabled) => setTouchProfile(enabled ? 1 : 0);
   bool setDisplayColor(int mode) => _queue(_setDisplayColorNative(mode));
   bool setDisplayTemperature(int mode) => _queue(_setDisplayTempNative(mode));
   bool setSunlight(bool enabled) => _queue(_setSunlightNative(enabled ? 1 : 0));

@@ -51,8 +51,9 @@ fn service_lifecycle_survives_process_restart() {
     };
     run_child("0");
     assert_eq!(handle_command("SET service.enabled 1"), "OK applied");
-    // OEM selection requires no vendor HAL and persists as no override.
-    for command in ["SET touch 0", "SET display.color -1", "SET display.temp -1"] {
+    // Touch OEM selection now requires verified game-mode access.
+    assert!(handle_command("SET touch 0").starts_with("ERR "));
+    for command in ["SET display.color -1", "SET display.temp -1"] {
         assert_eq!(handle_command(command), "OK applied", "{command}");
     }
     let oem = handle_command("GET snapshot");
